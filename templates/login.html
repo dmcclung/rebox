@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rebox Mail Login</title>
+    <script src="https://unpkg.com/@simplewebauthn/browser@7.2.0/dist/index.umd.min.js"></script>
+</head>
+<body>
+    <h1>Rebox Mail</h1>
+    <h2>Register</h2>
+    <input type="text" id="username" placeholder="Username">
+    <button onclick="register()">Register with Passkey</button>
+    
+    <h2>Login</h2>
+    <input type="text" id="loginUsername" placeholder="Username">
+    <button onclick="login()">Login with Passkey</button>
+
+    <script>
+        async function register() {
+            const username = document.getElementById('username').value;
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            // Begin registration
+            const beginResp = await fetch('/register_begin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            const beginData = await beginResp.json();
+
+            if (beginResp.status !== 200) {
+                alert(beginData.error);
+                return;
+            }
+
+            // Convert challenge and user ID to buffers
+            beginData.publicKey.challenge = Uint8Array.from(atob(beginData.publicKey.challenge), c => c.charCodeAt(0));
+            beginData.publicKey.user.id = Uint8Array.from(atob(beginData.publicKey.user.id), c => c.charCodeAt(0));
+
+            // Create credential
+            const credential = await navigator.credentials.create({ publicKey: beginData.publicKey });
+
+            // Complete registration
+            const completeResp = await fetch('/register_complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credential)
+            });
+            const completeData = await completeResp.json();
+
+            if (completeResp.status === 200) {
+                alert('Registration successful');
+            } else {
+                alert(completeData.error);
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            // Begin authentication
+            const beginResp = await fetch('/login_begin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            const beginData = await beginResp.json();
+
+            if (beginResp.status !== 200) {
+                alert(beginData.error);
+                return;
+            }
+
+            // Convert challenge and allowCredentials
+            beginData.publicKey.challenge = Uint8Array.from(atob(beginData.publicKey.challenge), c => c.charCodeAt(0));
+            beginData.publicKey.allowCredentials = beginData.publicKey.allowCredentials.map(cred => ({
+                ...cred,
+                id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0))
+            }));
+
+            // Get credential
+            const credential = await navigator.credentials.get({ publicKey: beginData.publicKey });
+
+            // Complete authentication
+            const completeResp = await fetch('/login_complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credential)
+            });
+            const completeData = await completeResp.json();
+
+            if (completeResp.status === 200) {
+                window.location.href = '/emails';
+            } else {
+                alert(completeData.error);
+            }
+        }
+    </script>
+</body>
+</html>

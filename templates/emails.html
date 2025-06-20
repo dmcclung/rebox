@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rebox Mail - Emails</title>
+</head>
+<body>
+    <h1>Rebox Mail - Your Emails</h1>
+    <a href="/logout">Logout</a>
+    <table border="1">
+        <tr>
+            <th>Sender</th>
+            <th>Recipient</th>
+            <th>Subject</th>
+            <th>Body</th>
+            <th>Received</th>
+        </tr>
+        <tbody id="emailTable"></tbody>
+    </table>
+
+    <script>
+        async function fetchEmails() {
+            const resp = await fetch('/emails');
+            const emails = await resp.json();
+            if (resp.status !== 200) {
+                alert(emails.error);
+                return;
+            }
+
+            const tableBody = document.getElementById('emailTable');
+            tableBody.innerHTML = '';
+            emails.forEach(email => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${email.sender}</td>
+                    <td>${email.recipient}</td>
+                    <td>${email.subject}</td>
+                    <td>${email.body}</td>
+                    <td>${new Date(email.received_at).toLocaleString()}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        window.onload = fetchEmails;
+    </script>
+</body>
+</html>
