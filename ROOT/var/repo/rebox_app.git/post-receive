@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Target directory where the app lives
+WORK_TREE=/app
+
+# Ensure the directory exists
+mkdir -p $WORK_TREE
+
+# Checkout the latest code
+git --work-tree=$WORK_TREE --git-dir=/var/repo/rebox_app.git checkout -f
+
+# Activate virtual environment and install dependencies
+python3 -m venv $WORK_TREE/venv
+source $WORK_TREE/venv/bin/activate
+pip install -r $WORK_TREE/requirements.txt
+
+# Restart the Gunicorn service
+sudo systemctl restart rebox

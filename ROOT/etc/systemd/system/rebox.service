@@ -1,0 +1,13 @@
+[Unit]
+Description=Rebox Mail
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/app
+Environment="PATH=/app/venv/bin:$$PATH"
+ExecStart=/app/venv/bin/gunicorn --workers 3 --bind unix:/app/gunicorn.sock app:app
+
+[Install]
+WantedBy=multi-user.target
