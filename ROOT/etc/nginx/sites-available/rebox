@@ -1,3 +1,11 @@
+# Redirect rebox.sh to mail.rebox.sh
+server {
+    listen 80;
+    server_name rebox.sh;
+    return 301 http://mail.rebox.sh$request_uri;
+}
+
+# Mail server configuration
 server {
     listen 80;
     server_name mail.rebox.sh;
