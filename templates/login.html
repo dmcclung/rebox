@@ -23,7 +23,7 @@
             }
 
             // Begin registration
-            const beginResp = await fetch('/register_begin', {
+            const beginResp = await fetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
@@ -43,7 +43,7 @@
             const credential = await navigator.credentials.create({ publicKey: beginData.publicKey });
 
             // Complete registration
-            const completeResp = await fetch('/register_complete', {
+            const completeResp = await fetch('/register/finish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(credential)
@@ -65,7 +65,7 @@
             }
 
             // Begin authentication
-            const beginResp = await fetch('/login_begin', {
+            const beginResp = await fetch('/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
@@ -88,7 +88,7 @@
             const credential = await navigator.credentials.get({ publicKey: beginData.publicKey });
 
             // Complete authentication
-            const completeResp = await fetch('/login_complete', {
+            const completeResp = await fetch('/login/finish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(credential)
