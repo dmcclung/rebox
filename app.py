@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify, session, render_template
 from webauthn import generate_registration_options, verify_registration_response
 from webauthn import generate_authentication_options, verify_authentication_response
-from webauthn.helpers.structs import PublicKeyCredentialDescriptor
-from webauthn.helpers.cose import COSEAlgorithmIdentifier
+from webauthn.helpers.structs import PublicKeyCredentialDescriptor, AuthenticatorSelection, ResidentKeyRequirement, UserVerificationRequirement
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -84,9 +83,10 @@ def register():
         user_name=username,
         user_display_name=username,
         attestation="none",
-        authenticator_selection={
-            "user_verification": "required",
-        },
+        authenticator_selection=AuthenticatorSelection(
+            resident_key=ResidentKeyRequirement.REQUIRED,
+            user_verification=UserVerificationRequirement.REQUIRED,
+        ),
     )
 
     session['registration_challenge'] = registration_options['challenge']
