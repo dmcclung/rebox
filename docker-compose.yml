@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/rebox_mail
+      - RP_ID=localhost
+      - RP_NAME=Rebox Mail Local
+      - SECRET_KEY=your-secret-key-here
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rebox_mail
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

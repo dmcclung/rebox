@@ -3,3 +3,6 @@ gunicorn
 psycopg2-binary
 webauthn
 python-dotenv
+SQLAlchemy
+alembic
+Flask-SQLAlchemy
