@@ -14,109 +14,56 @@
     <h2>Login</h2>
     <input type="text" id="loginUsername" placeholder="Username">
     <button onclick="login()">Login with Passkey</button>
-</div>
 {% endblock %}
 
 {% block scripts %}
 
     <script>
-        // SimpleWebAuthn is available as a global variable from the UMD bundle
-        const { startRegistration } = SimpleWebAuthnBrowser;
+        const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
 
         async function register() {
             const username = document.getElementById('username').value;
-            if (!username) {
-                alert('Please enter a username');
-                return;
-            }
-
-            // Get registration options
+            
             const resp = await fetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
             });
             const optionsJSON = await resp.json();
+            console.log(JSON.stringify(optionsJSON));
 
-            if (resp.status !== 200) {
-                // TODO: Display error message to user
-                alert(optionsJSON.error);
-                return;
-            }
+            const attResp = await startRegistration({ optionsJSON });
+            console.log(JSON.stringify(attResp));
 
-            let attResp;
-            try {
-                // Pass the options to the authenticator and wait for a response
-                attResp = await startRegistration(optionsJSON);
-            } catch (error) {
-                // Some basic error handling
-                if (error.name === 'InvalidStateError') {
-                    elemError.innerText = 'Error: Authenticator was probably already registered by user';
-                } else {
-                    elemError.innerText = error;
-                }
-
-                throw error;
-            }
-
-            // Verify registration
             const completeResp = await fetch('/register/finish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(attResp)
             });
             const completeData = await completeResp.json();
-
-            if (completeResp.status === 200) {
-                alert('Registration successful');
-            } else {
-                alert(completeData.error);
-            }
+            console.log(JSON.stringify(completeData));
         }
 
         async function login() {
             const username = document.getElementById('loginUsername').value;
-            if (!username) {
-                alert('Please enter a username');
-                return;
-            }
-
-            // Begin authentication
-            const beginResp = await fetch('/login', {
+            
+            const resp = await fetch('/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
             });
-            const beginData = await beginResp.json();
+            const optionsJSON = await resp.json();
 
-            if (beginResp.status !== 200) {
-                alert(beginData.error);
-                return;
-            }
+            const authResp = await startAuthentication({ optionsJSON });
+            console.log(JSON.stringify(authResp));
 
-            // Convert challenge and allowCredentials
-            beginData.publicKey.challenge = Uint8Array.from(atob(beginData.publicKey.challenge), c => c.charCodeAt(0));
-            beginData.publicKey.allowCredentials = beginData.publicKey.allowCredentials.map(cred => ({
-                ...cred,
-                id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0))
-            }));
-
-            // Get credential
-            const credential = await navigator.credentials.get({ publicKey: beginData.publicKey });
-
-            // Complete authentication
             const completeResp = await fetch('/login/finish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credential)
+                body: JSON.stringify(authResp)
             });
             const completeData = await completeResp.json();
-
-            if (completeResp.status === 200) {
-                window.location.href = '/emails';
-            } else {
-                alert(completeData.error);
-            }
+            console.log(JSON.stringify(completeData));
         }
     </script>
 {% endblock %}

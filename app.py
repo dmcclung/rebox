@@ -159,7 +159,7 @@ def emails():
     user = User.query.filter_by(username=session['username']).first()
     return jsonify([email.to_dict() for email in user.emails])
 
-@app.route("/logout", methods=["POST"])
+@app.route("/logout", methods=["GET"])
 def logout():
     session.pop("username")
     return jsonify({"status": "success"})
