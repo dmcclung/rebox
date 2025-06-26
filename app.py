@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session, render_template, send_from_directory
+from flask import Flask, request, jsonify, session, render_template, send_from_directory, redirect, url_for
 from webauthn import (
     generate_registration_options, 
     verify_registration_response,
@@ -161,8 +161,8 @@ def emails():
 
 @app.route("/logout", methods=["GET"])
 def logout():
-    session.pop("username")
-    return jsonify({"status": "success"})
+    session.pop("username", None)
+    return redirect(url_for('index'))
 
 @app.route('/favicon.ico')
 def favicon():
