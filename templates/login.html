@@ -24,7 +24,7 @@
         async function register() {
             const username = document.getElementById('username').value;
             
-            const resp = await fetch('/register', {
+            const resp = await fetch('/generate-registration-options', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
@@ -35,7 +35,7 @@
             const attResp = await startRegistration({ optionsJSON });
             console.log(JSON.stringify(attResp));
 
-            const completeResp = await fetch('/register/finish', {
+            const completeResp = await fetch('/verify-registration', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(attResp)
@@ -47,7 +47,7 @@
         async function login() {
             const username = document.getElementById('loginUsername').value;
             
-            const resp = await fetch('/login', {
+            const resp = await fetch('/generate-authentication-options', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
@@ -57,7 +57,7 @@
             const authResp = await startAuthentication({ optionsJSON });
             console.log(JSON.stringify(authResp));
 
-            const completeResp = await fetch('/login/finish', {
+            const completeResp = await fetch('/verify-authentication', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(authResp)

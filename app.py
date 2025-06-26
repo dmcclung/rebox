@@ -57,8 +57,8 @@ def index():
         return render_template("emails.html")
     return render_template("login.html")
 
-@app.route("/login", methods=["POST"])
-def login():
+@app.route("/generate-authentication-options", methods=["POST"])
+def generate_authentication_options():
     username = request.json["username"]
     user = User.query.filter_by(username=username).first()
     if not user:
@@ -79,8 +79,8 @@ def login():
     session['username'] = username
     return jsonify(json.loads(options_to_json(authentication_options)))
 
-@app.route("/authenticate", methods=["POST"])
-def authenticate():
+@app.route("/verify-authentication", methods=["POST"])
+def verify_authentication():
     username = session['username']
     if not username:
         return jsonify({"error": "No authentication in progress"}), 404
@@ -92,7 +92,7 @@ def authenticate():
             credential=request.json,
             expected_challenge=session['authentication_challenge'],
             expected_rp_id=os.getenv("RP_ID"),
-            expected_origin=request.url_root,
+            expected_origin=os.getenv("EXPECTED_ORIGIN"),
             credential_public_key=public_key,
             credential_id=credential_id,
         )
@@ -100,8 +100,8 @@ def authenticate():
         return jsonify({"status": "error", "message": str(e)}), 400
     return jsonify({"status": "success"})
 
-@app.route("/register", methods=["POST"])
-def register():
+@app.route("/generate-registration-options", methods=["POST"])
+def generate_registration_options():
     username = request.json["username"]
     if not username or User.query.filter_by(username=username).first():
         return jsonify({"status": "error", "message": "Invalid or existing username"}), 400
@@ -124,8 +124,8 @@ def register():
 
     return jsonify(json.loads(options_to_json(registration_options)))
 
-@app.route("/register/finish", methods=["POST"])
-def register_finish():
+@app.route("/verify-registration", methods=["POST"])
+def verify_registration():
     username = session['username']
     if not username:
         return jsonify({"error": "No registration in progress"}), 404
@@ -134,7 +134,7 @@ def register_finish():
             credential=request.json,
             expected_challenge=session['registration_challenge'],
             expected_rp_id=os.getenv("RP_ID"),
-            expected_origin=request.url_root,
+            expected_origin=os.getenv("EXPECTED_ORIGIN"),
         )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
