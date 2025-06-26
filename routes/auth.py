@@ -1,11 +1,5 @@
 from flask import Blueprint, jsonify, session, request, current_app
-from webauthn import (
-    generate_registration_options, 
-    verify_registration_response,
-    generate_authentication_options,
-    verify_authentication_response,
-    options_to_json
-)
+import webauthn as webauthn
 from webauthn.helpers.structs import (
     AttestationConveyancePreference, 
     AuthenticatorAttachment, 
@@ -18,7 +12,7 @@ import json
 from db import db
 from models import User
 
-bp = Blueprint('webauthn', __name__)
+bp = Blueprint('auth', __name__)
 
 @bp.route('/generate-authentication-options', methods=['POST'])
 def generate_authentication_options():
@@ -28,7 +22,7 @@ def generate_authentication_options():
         return jsonify({"error": "User not found"}), 404
     
     credential_id = base64.urlsafe_b64decode(user.credential_id)
-    authentication_options = generate_authentication_options(
+    authentication_options = webauthn.generate_authentication_options(
         rp_id=current_app.config.get("RP_ID"),
         allow_credentials=[
             PublicKeyCredentialDescriptor(
@@ -40,7 +34,7 @@ def generate_authentication_options():
 
     session['authentication_challenge'] = authentication_options.challenge
     session['username'] = username
-    return jsonify(json.loads(options_to_json(authentication_options)))
+    return jsonify(json.loads(webauthn.options_to_json(authentication_options)))
 
 @bp.route('/verify-authentication', methods=['POST'])
 def verify_authentication():
@@ -51,7 +45,7 @@ def verify_authentication():
         user = User.query.filter_by(username=username).first()
         credential_id = base64.urlsafe_b64decode(user.credential_id)
         public_key = base64.urlsafe_b64decode(user.public_key)
-        verify_authentication_response(
+        webauthn.verify_authentication_response(
             credential=request.json,
             expected_challenge=session.get('authentication_challenge'),
             expected_rp_id=current_app.config.get("RP_ID"),
@@ -69,7 +63,7 @@ def generate_registration_options():
     if not username or User.query.filter_by(username=username).first():
         return jsonify({"status": "error", "message": "Invalid or existing username"}), 400
     
-    registration_options = generate_registration_options(
+    registration_options = webauthn.generate_registration_options(
         rp_id=current_app.config.get("RP_ID"),
         rp_name=current_app.config.get("RP_NAME"),
         user_id=username.encode("utf-8"),
@@ -85,7 +79,7 @@ def generate_registration_options():
     session['registration_challenge'] = registration_options.challenge
     session['username'] = username
 
-    return jsonify(json.loads(options_to_json(registration_options)))
+    return jsonify(json.loads(webauthn.options_to_json(registration_options)))
 
 @bp.route('/verify-registration', methods=['POST'])
 def verify_registration():
@@ -93,7 +87,7 @@ def verify_registration():
     if not username:
         return jsonify({"error": "No registration in progress"}), 404
     try:
-        registration_response = verify_registration_response(
+        registration_response = webauthn.verify_registration_response(
             credential=request.json,
             expected_challenge=session.get('registration_challenge'),
             expected_rp_id=current_app.config.get("RP_ID"),
