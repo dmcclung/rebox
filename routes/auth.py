@@ -7,7 +7,6 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
     PublicKeyCredentialDescriptor
 )
-import base64
 import json
 from db import db
 from models import User
@@ -21,15 +20,11 @@ def generate_authentication_options():
     if not user:
         return jsonify({"error": "User not found"}), 404
     
-    credential_id = base64.urlsafe_b64decode(user.credential_id)
+    credential_id = webauthn.base64url_to_bytes(user.credential_id)
     authentication_options = webauthn.generate_authentication_options(
         rp_id=current_app.config.get("RP_ID"),
-        allow_credentials=[
-            PublicKeyCredentialDescriptor(
-                id=credential_id,
-                type="public-key",
-            )
-        ],
+        allow_credentials=[PublicKeyCredentialDescriptor(id=credential_id)],
+        user_verification=UserVerificationRequirement.PREFERRED,
     )
 
     session['authentication_challenge'] = authentication_options.challenge
@@ -43,15 +38,14 @@ def verify_authentication():
         return jsonify({"error": "No authentication in progress"}), 404
     try:
         user = User.query.filter_by(username=username).first()
-        credential_id = base64.urlsafe_b64decode(user.credential_id)
-        public_key = base64.urlsafe_b64decode(user.public_key)
+        public_key = webauthn.base64url_to_bytes(user.public_key)
         webauthn.verify_authentication_response(
             credential=request.json,
             expected_challenge=session.get('authentication_challenge'),
             expected_rp_id=current_app.config.get("RP_ID"),
             expected_origin=current_app.config.get("EXPECTED_ORIGIN"),
+            credential_current_sign_count=0,
             credential_public_key=public_key,
-            credential_id=credential_id,
         )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -103,13 +97,12 @@ def verify_registration():
     
     user = User(
         username=username,
-        credential_id=base64.urlsafe_b64encode(registration_response.credential_id).decode("utf-8"),
-        public_key=base64.urlsafe_b64encode(registration_response.public_key).decode("utf-8"),
+        credential_id=webauthn.base64url_to_bytes(registration_response.credential_id).decode("utf-8"),
+        public_key=webauthn.base64url_to_bytes(registration_response.credential_public_key).decode("utf-8"),
     )
     db.session.add(user)
     db.session.commit()
 
     session.pop("registration_challenge", None)
     session.pop("registration_username", None)
-    session['username'] = username
     return jsonify({"status": "success"})
