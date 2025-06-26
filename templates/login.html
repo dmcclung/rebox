@@ -20,7 +20,8 @@
 {% block scripts %}
 
     <script>
-        import { startRegistration } from '@simplewebauthn/browser';
+        // SimpleWebAuthn is available as a global variable from the UMD bundle
+        const { startRegistration } = SimpleWebAuthnBrowser;
 
         async function register() {
             const username = document.getElementById('username').value;
@@ -46,7 +47,7 @@
             let attResp;
             try {
                 // Pass the options to the authenticator and wait for a response
-                attResp = await startRegistration({ optionsJSON });
+                attResp = await startRegistration(optionsJSON);
             } catch (error) {
                 // Some basic error handling
                 if (error.name === 'InvalidStateError') {
