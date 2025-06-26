@@ -33,12 +33,12 @@ def generate_authentication_options():
     )
 
     session['authentication_challenge'] = authentication_options.challenge
-    session['username'] = username
+    session['authentication_username'] = username
     return jsonify(json.loads(webauthn.options_to_json(authentication_options)))
 
 @bp.route('/verify-authentication', methods=['POST'])
 def verify_authentication():
-    username = session['username']
+    username = session.get('authentication_username')
     if not username:
         return jsonify({"error": "No authentication in progress"}), 404
     try:
@@ -55,6 +55,11 @@ def verify_authentication():
         )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+    
+    session.pop("authentication_challenge", None)
+    session.pop("authentication_username", None)
+    session['username'] = username
+    
     return jsonify({"status": "success"})
 
 @bp.route('/generate-registration-options', methods=['POST'])
@@ -77,13 +82,13 @@ def generate_registration_options():
     )
 
     session['registration_challenge'] = registration_options.challenge
-    session['username'] = username
+    session['registration_username'] = username
 
     return jsonify(json.loads(webauthn.options_to_json(registration_options)))
 
 @bp.route('/verify-registration', methods=['POST'])
 def verify_registration():
-    username = session['username']
+    username = session.get('registration_username')
     if not username:
         return jsonify({"error": "No registration in progress"}), 404
     try:
@@ -105,5 +110,6 @@ def verify_registration():
     db.session.commit()
 
     session.pop("registration_challenge", None)
-    session.pop("username", None)
+    session.pop("registration_username", None)
+    session['username'] = username
     return jsonify({"status": "success"})

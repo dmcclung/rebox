@@ -64,6 +64,10 @@
             });
             const completeData = await verifyAuthResp.json();
             console.log(JSON.stringify(completeData));
+            
+            if (completeData.status === 'success') {
+                window.location.href = "{{ url_for('main.index') }}";
+            }
         }
     </script>
 {% endblock %}
