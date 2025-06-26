@@ -1,7 +1,17 @@
-from flask import Flask, request, jsonify, session, render_template
-from webauthn import generate_registration_options, verify_registration_response
-from webauthn import generate_authentication_options, verify_authentication_response
-from webauthn.helpers.structs import PublicKeyCredentialDescriptor, AuthenticatorSelection, ResidentKeyRequirement, UserVerificationRequirement
+from flask import Flask, request, jsonify, session, render_template, send_from_directory
+from webauthn import (
+    generate_registration_options, 
+    verify_registration_response,
+    generate_authentication_options,
+    verify_authentication_response,
+    options_to_json
+)
+from webauthn.helpers.structs import (
+    AttestationConveyancePreference, 
+    AuthenticatorAttachment, 
+    AuthenticatorSelectionCriteria,
+    UserVerificationRequirement
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -65,9 +75,9 @@ def login():
         ],
     )
 
-    session['authentication_challenge'] = authentication_options['challenge']
+    session['authentication_challenge'] = authentication_options.challenge
     session['username'] = username
-    return jsonify(json.loads(authentication_options.json()))
+    return jsonify(json.loads(options_to_json(authentication_options)))
 
 @app.route("/authenticate", methods=["POST"])
 def authenticate():
@@ -101,18 +111,18 @@ def register():
         rp_name=os.getenv("RP_NAME"),
         user_id=username.encode("utf-8"),
         user_name=username,
-        user_display_name=username,
-        attestation="none",
-        authenticator_selection=AuthenticatorSelection(
-            resident_key=ResidentKeyRequirement.REQUIRED,
-            user_verification=UserVerificationRequirement.REQUIRED,
-        ),
+        attestation=AttestationConveyancePreference.INDIRECT,
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            authenticator_attachment=AuthenticatorAttachment.CROSS_PLATFORM,
+            require_resident_key=True,
+            user_verification=UserVerificationRequirement.PREFERRED
+        )
     )
 
-    session['registration_challenge'] = registration_options['challenge']
+    session['registration_challenge'] = registration_options.challenge
     session['username'] = username
 
-    return jsonify(json.loads(registration_options.json()))
+    return jsonify(json.loads(options_to_json(registration_options)))
 
 @app.route("/register/finish", methods=["POST"])
 def register_finish():
@@ -153,6 +163,11 @@ def emails():
 def logout():
     session.pop("username")
     return jsonify({"status": "success"})
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static', 'images'),
+                             'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == "__main__":
     app.run(ssl_context="adhoc")

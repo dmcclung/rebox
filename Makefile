@@ -1,13 +1,4 @@
-.PHONY: setup build up down logs shell migrate upgrade shell-db test clean
-
-# Initialize the project
-setup:
-	docker-compose build
-	docker-compose up -d db
-	sleep 5  # Wait for database to be ready
-	docker-compose run --rm web flask db init
-	docker-compose run --rm web flask db migrate -m "Initial migration"
-	docker-compose run --rm web flask db upgrade
+.PHONY: build up down db logs shell migrate upgrade shell-db test clean
 
 # Build containers
 build:
@@ -21,6 +12,10 @@ up:
 down:
 	docker-compose down
 
+# Start database
+db:
+	docker-compose up -d db
+
 # View logs
 logs:
 	docker-compose logs -f
@@ -31,11 +26,11 @@ shell:
 
 # Database migrations
 migrate:
-	docker-compose run --rm web flask db migrate -m "$(m)"
+	flask db migrate -m "$(m)"
 
 # Apply migrations
 upgrade:
-	docker-compose run --rm web flask db upgrade
+	flask db upgrade
 
 # Open database shell
 shell-db:
@@ -43,7 +38,7 @@ shell-db:
 
 # Run tests
 test:
-	docker-compose run --rm web python -m pytest
+	flask test
 
 # Clean up
 clean:

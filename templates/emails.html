@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Rebox Mail - Emails</title>
-</head>
-<body>
-    <h1>Rebox Mail - Your Emails</h1>
-    <a href="/logout">Logout</a>
+{% extends "base.html" %}
+
+{% block title %}Your Emails - Rebox Mail{% endblock %}
+
+{% block content %}
+    <h1>Your Emails</h1>
+    <p><a href="/logout">Logout</a></p>
     <table border="1">
         <tr>
             <th>Sender</th>
@@ -43,5 +42,4 @@
 
         window.onload = fetchEmails;
     </script>
-</body>
-</html>
+{% endblock %}

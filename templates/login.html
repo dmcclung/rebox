@@ -1,11 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Rebox Mail Login</title>
-    <script src="https://unpkg.com/@simplewebauthn/browser@7.2.0/dist/index.umd.min.js"></script>
-</head>
-<body>
-    <h1>Rebox Mail</h1>
+{% extends "base.html" %}
+
+{% block title %}Login - Rebox Mail{% endblock %}
+
+{% block head %}
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
     <h2>Register</h2>
     <input type="text" id="username" placeholder="Username">
     <button onclick="register()">Register with Passkey</button>
@@ -13,8 +14,14 @@
     <h2>Login</h2>
     <input type="text" id="loginUsername" placeholder="Username">
     <button onclick="login()">Login with Passkey</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
 
     <script>
+        import { startRegistration } from '@simplewebauthn/browser';
+
         async function register() {
             const username = document.getElementById('username').value;
             if (!username) {
@@ -22,31 +29,40 @@
                 return;
             }
 
-            // Begin registration
-            const beginResp = await fetch('/register', {
+            // Get registration options
+            const resp = await fetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
             });
-            const beginData = await beginResp.json();
+            const optionsJSON = await resp.json();
 
-            if (beginResp.status !== 200) {
-                alert(beginData.error);
+            if (resp.status !== 200) {
+                // TODO: Display error message to user
+                alert(optionsJSON.error);
                 return;
             }
 
-            // Convert challenge and user ID to buffers
-            beginData.publicKey.challenge = Uint8Array.from(atob(beginData.publicKey.challenge), c => c.charCodeAt(0));
-            beginData.publicKey.user.id = Uint8Array.from(atob(beginData.publicKey.user.id), c => c.charCodeAt(0));
+            let attResp;
+            try {
+                // Pass the options to the authenticator and wait for a response
+                attResp = await startRegistration({ optionsJSON });
+            } catch (error) {
+                // Some basic error handling
+                if (error.name === 'InvalidStateError') {
+                    elemError.innerText = 'Error: Authenticator was probably already registered by user';
+                } else {
+                    elemError.innerText = error;
+                }
 
-            // Create credential
-            const credential = await navigator.credentials.create({ publicKey: beginData.publicKey });
+                throw error;
+            }
 
-            // Complete registration
+            // Verify registration
             const completeResp = await fetch('/register/finish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credential)
+                body: JSON.stringify(attResp)
             });
             const completeData = await completeResp.json();
 
@@ -102,5 +118,4 @@
             }
         }
     </script>
-</body>
-</html>
+{% endblock %}

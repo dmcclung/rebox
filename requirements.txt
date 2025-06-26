@@ -6,3 +6,4 @@ python-dotenv
 SQLAlchemy
 alembic
 Flask-SQLAlchemy
+Flask-Migrate
