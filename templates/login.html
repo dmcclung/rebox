@@ -35,12 +35,12 @@
             const attResp = await startRegistration({ optionsJSON });
             console.log(JSON.stringify(attResp));
 
-            const completeResp = await fetch('/verify-registration', {
+            const verifyResp = await fetch('/verify-registration', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(attResp)
             });
-            const completeData = await completeResp.json();
+            const completeData = await verifyResp.json();
             console.log(JSON.stringify(completeData));
         }
 
@@ -57,12 +57,12 @@
             const authResp = await startAuthentication({ optionsJSON });
             console.log(JSON.stringify(authResp));
 
-            const completeResp = await fetch('/verify-authentication', {
+            const verifyAuthResp = await fetch('/verify-authentication', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(authResp)
             });
-            const completeData = await completeResp.json();
+            const completeData = await verifyAuthResp.json();
             console.log(JSON.stringify(completeData));
         }
     </script>

@@ -19,7 +19,7 @@
         {% if session.get('username') %}
             <div class="user-info">
                 <span>Hey there, {{ session['username'] }}</span>
-                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+                <a href="{{ url_for('user.logout') }}" class="logout-btn">Logout</a>
             </div>
         {% endif %}
     </header>
