@@ -24,6 +24,19 @@
         {% endif %}
     </header>
     
+    <div class="notification-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="notification {{ category }}">
+                        <span>{{ message }}</span>
+                        <button class="close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
     <main>
         {% block content %}{% endblock %}
     </main>
@@ -31,6 +44,19 @@
     <footer>
         <p>&copy; 2025 Rebox Mail</p>
     </footer>
+    
+    <script>
+        // Auto-remove notifications after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const notifications = document.querySelectorAll('.notification');
+            notifications.forEach(notification => {
+                setTimeout(() => {
+                    notification.classList.add('fade-out');
+                    setTimeout(() => notification.remove(), 300);
+                }, 5000);
+            });
+        });
+    </script>
     
     {% block scripts %}{% endblock %}
 </body>

@@ -20,16 +20,20 @@ def generate_authentication_options():
     if not user:
         return jsonify({"error": "User not found"}), 404
     
-    credential_id = webauthn.base64url_to_bytes(user.credential_id)
-    authentication_options = webauthn.generate_authentication_options(
-        rp_id=current_app.config.get("RP_ID"),
-        allow_credentials=[PublicKeyCredentialDescriptor(id=credential_id)],
-        user_verification=UserVerificationRequirement.PREFERRED,
-    )
+    try:
+        credential_id = webauthn.base64url_to_bytes(user.credential_id)
+        authentication_options = webauthn.generate_authentication_options(
+            rp_id=current_app.config.get("RP_ID"),
+            allow_credentials=[PublicKeyCredentialDescriptor(id=credential_id)],
+            user_verification=UserVerificationRequirement.PREFERRED,
+        )
 
-    session['authentication_challenge'] = authentication_options.challenge
-    session['authentication_username'] = username
-    return jsonify(json.loads(webauthn.options_to_json(authentication_options)))
+        session['authentication_challenge'] = authentication_options.challenge
+        session['authentication_username'] = username
+        return jsonify(json.loads(webauthn.options_to_json(authentication_options)))
+    except Exception as e:
+        current_app.logger.error(f'Authentication options generation failed: {str(e)}')
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.route('/verify-authentication', methods=['POST'])
 def verify_authentication():
@@ -48,32 +52,38 @@ def verify_authentication():
             credential_public_key=public_key,
         )
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        current_app.logger.error(f'Authentication response verification failed: {str(e)}')
+        return jsonify({"status": "error", "message": str(e)}), 500
     
     session.pop("authentication_challenge", None)
     session.pop("authentication_username", None)
     session['username'] = username
-    
     return jsonify({"status": "success"})
 
 @bp.route('/generate-registration-options', methods=['POST'])
 def generate_registration_options():
     username = request.json["username"]
-    if not username or User.query.filter_by(username=username).first():
-        return jsonify({"status": "error", "message": "Invalid or existing username"}), 400
+    if not username:
+        return jsonify({"status": "error", "message": "Username is required"}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({"status": "error", "message": "Username already exists"}), 400
     
-    registration_options = webauthn.generate_registration_options(
-        rp_id=current_app.config.get("RP_ID"),
-        rp_name=current_app.config.get("RP_NAME"),
-        user_id=username.encode("utf-8"),
-        user_name=username,
-        attestation=AttestationConveyancePreference.INDIRECT,
-        authenticator_selection=AuthenticatorSelectionCriteria(
-            authenticator_attachment=AuthenticatorAttachment.CROSS_PLATFORM,
-            require_resident_key=True,
-            user_verification=UserVerificationRequirement.PREFERRED
+    try:
+        registration_options = webauthn.generate_registration_options(
+            rp_id=current_app.config.get("RP_ID"),
+            rp_name=current_app.config.get("RP_NAME"),
+            user_id=username.encode("utf-8"),
+            user_name=username,
+            attestation=AttestationConveyancePreference.INDIRECT,
+            authenticator_selection=AuthenticatorSelectionCriteria(
+                authenticator_attachment=AuthenticatorAttachment.CROSS_PLATFORM,
+                require_resident_key=True,
+                user_verification=UserVerificationRequirement.PREFERRED
+            )
         )
-    )
+    except Exception as e:
+        current_app.logger.error(f'Registration options generation failed: {str(e)}')
+        return jsonify({"status": "error", "message": str(e)}), 500
 
     session['registration_challenge'] = registration_options.challenge
     session['registration_username'] = username
@@ -93,7 +103,8 @@ def verify_registration():
             expected_origin=current_app.config.get("EXPECTED_ORIGIN"),
         )
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        current_app.logger.error(f'Registration response verification failed: {str(e)}')
+        return jsonify({"status": "error", "message": str(e)}), 500
     
     user = User(
         username=username,

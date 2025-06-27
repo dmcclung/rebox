@@ -21,52 +21,98 @@
     <script>
         const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
 
+        function showNotification(message, type = 'info') {
+            const notificationArea = document.querySelector('.notification-area');
+            if (!notificationArea) return;
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <span>${message}</span>
+                <button class="close" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            
+            notificationArea.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+
         async function register() {
             const username = document.getElementById('username').value;
             
-            const resp = await fetch('/generate-registration-options', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-            const optionsJSON = await resp.json();
-            console.log(JSON.stringify(optionsJSON));
+            try {
+                const resp = await fetch('/generate-registration-options', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
 
-            const attResp = await startRegistration({ optionsJSON });
-            console.log(JSON.stringify(attResp));
+                if (!resp.ok) {
+                    const errorData = await resp.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Failed to start registration');
+                }
 
-            const verifyResp = await fetch('/verify-registration', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(attResp)
-            });
-            const completeData = await verifyResp.json();
-            console.log(JSON.stringify(completeData));
+                const optionsJSON = await resp.json();
+                const attResp = await startRegistration({ optionsJSON });
+
+                const verifyResp = await fetch('/verify-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(attResp)
+                });
+                
+                if (!verifyResp.ok) {
+                    const errorData = await verifyResp.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Registration verification failed');
+                }
+
+                showNotification('Registration successful!', 'success');
+                document.getElementById('username').value = '';
+            } catch (error) {
+                showNotification(error.message || 'Registration failed. Please try again.', 'error');
+            }
         }
 
         async function login() {
             const username = document.getElementById('loginUsername').value;
             
-            const resp = await fetch('/generate-authentication-options', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-            const optionsJSON = await resp.json();
+            try {
+                const resp = await fetch('/generate-authentication-options', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                if (!resp.ok) {
+                    const errorData = await resp.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Failed to start authentication');
+                }
+                
+                const optionsJSON = await resp.json();
+                const authResp = await startAuthentication({ optionsJSON });
 
-            const authResp = await startAuthentication({ optionsJSON });
-            console.log(JSON.stringify(authResp));
-
-            const verifyAuthResp = await fetch('/verify-authentication', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(authResp)
-            });
-            const completeData = await verifyAuthResp.json();
-            console.log(JSON.stringify(completeData));
-            
-            if (completeData.status === 'success') {
-                window.location.href = "{{ url_for('main.index') }}";
+                const verifyAuthResp = await fetch('/verify-authentication', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(authResp)
+                });
+                
+                if (!verifyAuthResp.ok) {
+                    const errorData = await verifyAuthResp.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Authentication verification failed');
+                }
+                
+                showNotification('Login successful!', 'success');
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('main.index') }}";
+                }, 1000);
+            } catch (error) {
+                const errorMsg = error.message || 'An error occurred during login';
+                showNotification(errorMsg, 'error');
+                console.error('Login error:', error);
             }
         }
     </script>
