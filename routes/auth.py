@@ -10,6 +10,7 @@ from webauthn.helpers.structs import (
 import json
 from db import db
 from models import User
+from base64 import urlsafe_b64encode
 
 bp = Blueprint('auth', __name__)
 
@@ -108,8 +109,8 @@ def verify_registration():
     
     user = User(
         username=username,
-        credential_id=webauthn.base64url_to_bytes(registration_response.credential_id).decode("utf-8"),
-        public_key=webauthn.base64url_to_bytes(registration_response.credential_public_key).decode("utf-8"),
+        credential_id=urlsafe_b64encode(registration_response.credential_id).decode("ascii").rstrip("=")    ,
+        public_key=urlsafe_b64encode(registration_response.credential_public_key).decode("ascii").rstrip("="),
     )
     db.session.add(user)
     db.session.commit()
