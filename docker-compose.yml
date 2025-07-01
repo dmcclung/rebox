@@ -9,6 +9,7 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_APP=app.py
+      - FLASK_DEBUG=1
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/rebox_mail
       - RP_ID=localhost
       - RP_NAME=Rebox Mail Local

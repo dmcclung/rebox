@@ -1,5 +1,9 @@
-from flask import Blueprint, jsonify, session, request, current_app
+import logging
+from flask import Blueprint, jsonify, session, request, current_app, redirect, url_for, flash, render_template
+from flask_login import login_user, logout_user, current_user, login_required
 import webauthn as webauthn
+
+logger = logging.getLogger(__name__)
 from webauthn.helpers.structs import (
     AttestationConveyancePreference, 
     AuthenticatorAttachment, 
@@ -9,10 +13,16 @@ from webauthn.helpers.structs import (
 )
 import json
 from db import db
-from models import User
+from models.user import User
 from base64 import urlsafe_b64encode
 
-bp = Blueprint('auth', __name__)
+bp = Blueprint('auth', __name__, url_prefix='/api')
+
+@bp.route('/login', methods=['GET'])
+def login_page():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    return render_template('login.html')
 
 @bp.route('/generate-authentication-options', methods=['POST'])
 def generate_authentication_options():
@@ -40,26 +50,58 @@ def generate_authentication_options():
 def verify_authentication():
     username = session.get('authentication_username')
     if not username:
-        return jsonify({"error": "No authentication in progress"}), 404
+        return jsonify({"error": "No authentication in progress"}), 400
+        
     try:
         user = User.query.filter_by(username=username).first()
+        if not user:
+            logger.error(f"User not found: {username}")
+            return jsonify({"error": "User not found"}), 404
+            
         public_key = webauthn.base64url_to_bytes(user.public_key)
         webauthn.verify_authentication_response(
             credential=request.json,
             expected_challenge=session.get('authentication_challenge'),
             expected_rp_id=current_app.config.get("RP_ID"),
             expected_origin=current_app.config.get("EXPECTED_ORIGIN"),
-            credential_current_sign_count=0,
             credential_public_key=public_key,
+            credential_current_sign_count=0,
+            require_user_verification=True,
         )
+        
+        # Debug logs before login
+        # TODO: If a user is not active, they should not be able to login
+        # We need to handle this and redirect to an error page
+        logger.debug(f"Before login - user_id: {user.id}, is_active: {user.is_active}")
+        
+        # Log the user in with Flask-Login
+        remember_me = request.json.get('remember_me', False)
+        login_result = login_user(user, remember=remember_me)
+        
+        # Debug logs after login
+        logger.debug(f"Login result: {login_result}")
+        logger.debug(f"After login - user_id: {user.id}, is_authenticated: {user.is_authenticated}")
+        logger.debug(f"Login user called with remember_me: {remember_me}")
+        
+        # Get the next URL if it exists
+        next_url = request.args.get('next') or url_for('main.index')
+        
+        # Clear the session
+        session.pop('authentication_challenge', None)
+        session.pop('authentication_username', None)
+        
+        return jsonify({"status": "success", "redirect": next_url})
+        
     except Exception as e:
-        current_app.logger.error(f'Authentication response verification failed: {str(e)}')
-        return jsonify({"status": "error", "message": str(e)}), 500
-    
-    session.pop("authentication_challenge", None)
-    session.pop("authentication_username", None)
-    session['username'] = username
-    return jsonify({"status": "success"})
+        current_app.logger.error(f'Authentication verification failed: {str(e)}')
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+@bp.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('auth.login_page'))
 
 @bp.route('/generate-registration-options', methods=['POST'])
 def generate_registration_options():

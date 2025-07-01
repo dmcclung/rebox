@@ -7,3 +7,4 @@ SQLAlchemy
 alembic
 Flask-SQLAlchemy
 Flask-Migrate
+flask-login

@@ -1,4 +1,12 @@
-.PHONY: build up down db logs shell migrate upgrade shell-db test clean
+.PHONY: build up down db logs shell migrate upgrade shell-db test clean restart rebuild
+
+# Restart web service
+restart:
+	docker-compose restart web
+
+# Rebuild and restart web service
+rebuild:
+	docker-compose up -d --build web
 
 # Build containers
 build:

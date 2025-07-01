@@ -17,7 +17,7 @@
 
     <script>
         async function fetchEmails() {
-            const resp = await fetch('/emails');
+            const resp = await fetch('/api/emails');
             const emails = await resp.json();
             if (resp.status !== 200) {
                 alert(emails.error);

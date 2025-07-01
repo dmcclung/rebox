@@ -1,44 +1,149 @@
 import sys
 import email
 import psycopg2
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 db_url = os.getenv('DATABASE_URL')
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'localhost')
+SMTP_PORT = int(os.getenv('SMTP_PORT', 1025))  # Default to local testing port
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+EMAIL_DOMAIN = os.getenv('EMAIL_DOMAIN', 'rebox.sh')
 
-def store_email(sender, recipient, subject, body):
-    conn = psycopg2.connect(db_url)
-    try:
-        with conn.cursor() as cur:
+class EmailProcessor:
+    def __init__(self):
+        self.conn = psycopg2.connect(db_url)
+        self.smtp_server = SMTP_SERVER
+        self.smtp_port = SMTP_PORT
+        self.smtp_username = SMTP_USERNAME
+        self.smtp_password = SMTP_PASSWORD
+        self.email_domain = EMAIL_DOMAIN
+
+    def __del__(self):
+        if hasattr(self, 'conn') and self.conn:
+            self.conn.close()
+
+    def get_forwarding_email(self, alias):
+        """Get the forwarding email for a given alias"""
+        with self.conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO emails (sender, recipient, subject, body) VALUES (%s, %s, %s, %s)",
-                (sender, recipient, subject, body)
+                """
+                SELECT ea.forwarding_email, u.username 
+                FROM email_aliases ea
+                JOIN "user" u ON ea.user_id = u.id
+                WHERE ea.alias_prefix = %s AND ea.alias_domain = %s
+                """,
+                (alias, self.email_domain)
             )
-        conn.commit()
-    finally:
-        conn.close()
+            result = cur.fetchone()
+            return result if result else (None, None)
+
+    def store_email(self, sender, recipient, subject, body, alias=None):
+        """Store the email in the database"""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO emails (sender, recipient, subject, body, alias_used)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (sender, recipient, subject, body, alias)
+                )
+                self.conn.commit()
+                return cur.fetchone()[0]
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Error storing email: {e}", file=sys.stderr)
+            raise
+
+    def forward_email(self, to_email, from_email, subject, body):
+        """Forward an email to the specified address"""
+        msg = MIMEMultipart()
+        msg['From'] = from_email
+        msg['To'] = to_email
+        msg['Subject'] = f"Fwd: {subject}"
+        
+        # Add the original email as an attachment or in the body
+        msg.attach(MIMEText(body, 'plain'))
+        
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                if self.smtp_username and self.smtp_password:
+                    server.login(self.smtp_username, self.smtp_password)
+                server.send_message(msg)
+            return True
+        except Exception as e:
+            print(f"Error forwarding email: {e}", file=sys.stderr)
+            return False
+
+    def process_email(self, raw_email):
+        """Process an incoming email"""
+        msg = email.message_from_string(raw_email)
+        
+        sender = msg['from']
+        to = msg['to']
+        subject = msg['subject']
+        
+        # Extract body (text/plain)
+        body = ""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == 'text/plain':
+                    body = part.get_payload(decode=True).decode(errors='replace')
+                    break
+        else:
+            body = msg.get_payload(decode=True).decode(errors='replace')
+        
+        # Extract the local part from the recipient email
+        recipient_local = to.split('@')[0].lower()
+        
+        # Check if this is an alias
+        forwarding_email, username = self.get_forwarding_email(recipient_local)
+        
+        if forwarding_email:
+            # This is an alias, forward the email
+            try:
+                # Store the original email
+                email_id = self.store_email(sender, to, subject, body, recipient_local)
+                
+                # Forward the email
+                success = self.forward_email(
+                    to_email=forwarding_email,
+                    from_email=f"{recipient_local}@{self.email_domain}",
+                    subject=subject,
+                    body=body
+                )
+                
+                if not success:
+                    print(f"Failed to forward email to {forwarding_email}", file=sys.stderr)
+                
+                return True
+                
+            except Exception as e:
+                print(f"Error processing email: {e}", file=sys.stderr)
+                return False
+        else:
+            # Not an alias, just store it
+            try:
+                self.store_email(sender, to, subject, body)
+                return True
+            except Exception as e:
+                print(f"Error storing email: {e}", file=sys.stderr)
+                return False
 
 def main():
     # Read email from stdin
     raw_email = sys.stdin.read()
-    msg = email.message_from_string(raw_email)
     
-    sender = msg['from']
-    recipient = msg['to']
-    subject = msg['subject']
-    
-    # Extract body (text/plain)
-    body = ""
-    if msg.is_multipart():
-        for part in msg.walk():
-            if part.get_content_type() == 'text/plain':
-                body = part.get_payload(decode=True).decode()
-                break
-    else:
-        body = msg.get_payload(decode=True).decode()
-
-    store_email(sender, recipient, subject, body)
+    # Process the email
+    processor = EmailProcessor()
+    processor.process_email(raw_email)
 
 if __name__ == '__main__':
     main()

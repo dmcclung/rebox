@@ -15,7 +15,13 @@
 </head>
 <body>
     <header>
-        <h1>Rebox Mail</h1>
+        <div class="header-content">
+            <h1>Rebox Mail</h1>
+            <nav class="main-nav">
+                <a href="{{ url_for('main.index') }}" class="nav-link">Emails</a>
+                <a href="{{ url_for('main.aliases') }}" class="nav-link">Aliases</a>
+            </nav>
+        </div>
         {% if session.get('username') %}
             <div class="user-info">
                 <span>Hey there, {{ session['username'] }}</span>
@@ -42,12 +48,19 @@
     </main>
     
     <footer>
-        <p>&copy; 2025 Rebox Mail</p>
+        <p>&copy; 2025 Rebox Mail
+            <span class="footer-separator">•</span>
+            <span id="last-updated">Last updated: <span id="timestamp"></span></span>
+        </p>
     </footer>
     
     <script>
         // Auto-remove notifications after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {
+            // Set last updated timestamp
+            const timestamp = new Date();
+            document.getElementById('timestamp').textContent = timestamp.toLocaleString();
+            
             const notifications = document.querySelectorAll('.notification');
             notifications.forEach(notification => {
                 setTimeout(() => {

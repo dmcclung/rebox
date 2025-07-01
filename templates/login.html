@@ -7,13 +7,34 @@
 {% endblock %}
 
 {% block content %}
-    <h2>Register</h2>
-    <input type="text" id="username" placeholder="Username">
-    <button onclick="register()">Register with Passkey</button>
+<div class="login-container">
+    <h2>Welcome Back</h2>
     
-    <h2>Login</h2>
-    <input type="text" id="loginUsername" placeholder="Username">
-    <button onclick="login()">Login with Passkey</button>
+    <div class="form-group">
+        <input type="text" id="loginUsername" placeholder="Enter your username" class="form-control">
+    </div>
+    
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="rememberMe">
+        <label class="form-check-label" for="rememberMe">Remember me</label>
+    </div>
+    
+    <button class="btn btn-primary" onclick="login()">
+        Continue with Passkey
+    </button>
+    
+    <div style="text-align: center; margin: 2rem 0;">
+        <span style="color: #718096;">Don't have an account?</span>
+    </div>
+    
+    <div class="form-group">
+        <input type="text" id="username" placeholder="Choose a username" class="form-control">
+    </div>
+    
+    <button class="btn" style="background: #f0f2f5; color: #2d3748;" onclick="register()">
+        Create Account
+    </button>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -45,7 +66,7 @@
             const username = document.getElementById('username').value;
             
             try {
-                const resp = await fetch('/generate-registration-options', {
+                const resp = await fetch('/api/generate-registration-options', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username })
@@ -59,7 +80,7 @@
                 const optionsJSON = await resp.json();
                 const attResp = await startRegistration({ optionsJSON });
 
-                const verifyResp = await fetch('/verify-registration', {
+                const verifyResp = await fetch('/api/verify-registration', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(attResp)
@@ -81,7 +102,7 @@
             const username = document.getElementById('loginUsername').value;
             
             try {
-                const resp = await fetch('/generate-authentication-options', {
+                const resp = await fetch('/api/generate-authentication-options', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username })
@@ -93,11 +114,15 @@
                 
                 const optionsJSON = await resp.json();
                 const authResp = await startAuthentication({ optionsJSON });
+                const rememberMe = document.getElementById('rememberMe').checked;
 
-                const verifyAuthResp = await fetch('/verify-authentication', {
+                const verifyAuthResp = await fetch('/api/verify-authentication?next={{ next }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(authResp)
+                    body: JSON.stringify({
+                        ...authResp,
+                        remember_me: rememberMe
+                    })
                 });
                 
                 if (!verifyAuthResp.ok) {
