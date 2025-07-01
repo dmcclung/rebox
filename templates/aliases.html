@@ -237,7 +237,7 @@
 <div class="aliases-container">
     <div class="aliases-header">
         <h2>Your Email Aliases</h2>
-        <button class="btn-create" onclick="showCreateModal()">Create New Alias</button>
+        <button class="btn btn-primary" onclick="showCreateModal()">Create New Alias</button>
     </div>
     
     <div class="aliases-list" id="aliasesList">
@@ -266,8 +266,7 @@
                 <div style="display: flex; align-items: center; margin-bottom: 5px;">
                     <input type="text" id="aliasPreview" readonly 
                         style="flex: 1; background: #f8f9fa; cursor: not-allowed;">
-                    <button type="button" onclick="loadAlias()" 
-                        style="margin-left: 10px; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    <button type="button" class="btn btn-refresh" onclick="loadAlias()">
                         Refresh
                     </button>
                 </div>
@@ -285,9 +284,9 @@
                 <input type="email" id="forwardingEmail" required>
             </div>
             
-            <div class="form-actions">
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn-submit">Save Alias</button>
+            <div class="form-actions" style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-submit">Save Alias</button>
             </div>
         </form>
     </div>
@@ -330,8 +329,8 @@
                         <div class="alias-forwarding">Forwards to: ${alias.forwarding_email}</div>
                     </div>
                     <div class="alias-actions">
-                        <button class="btn-edit" onclick="editAlias(${JSON.stringify(alias).replace(/"/g, '&quot;')})">Edit</button>
-                        <button class="btn-delete" onclick="deleteAlias(${alias.id})">Delete</button>
+                        <button class="btn btn-edit" onclick="editAlias(${JSON.stringify(alias).replace(/"/g, '&quot;')})">Edit</button>
+                        <button class="btn btn-delete" onclick="deleteAlias(${alias.id})">Delete</button>
                     </div>
                 `;
                 aliasesList.appendChild(aliasElement);
