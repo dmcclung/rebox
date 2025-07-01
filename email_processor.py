@@ -30,18 +30,26 @@ class EmailProcessor:
 
     def get_forwarding_email(self, alias):
         """Get the forwarding email for a given alias"""
-        with self.conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT ea.forwarding_email, u.username 
-                FROM email_aliases ea
-                JOIN "user" u ON ea.user_id = u.id
-                WHERE ea.alias_prefix = %s AND ea.alias_domain = %s
-                """,
-                (alias, self.email_domain)
-            )
-            result = cur.fetchone()
-            return result if result else (None, None)
+        # Split alias into title and random parts
+        if '.' in alias:
+            alias_parts = alias.split('.')
+            if len(alias_parts) == 2:
+                alias_title, alias_random = alias_parts
+                with self.conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT ea.forwarding_email, u.username 
+                        FROM email_aliases ea
+                        JOIN "user" u ON ea.user_id = u.id
+                        WHERE ea.alias_title = %s 
+                        AND ea.alias_random = %s 
+                        AND ea.alias_domain = %s
+                        """,
+                        (alias_title, alias_random, self.email_domain)
+                    )
+                    result = cur.fetchone()
+                    return result if result else (None, None)
+        return (None, None)
 
     def store_email(self, sender, recipient, subject, body, alias=None):
         """Store the email in the database"""

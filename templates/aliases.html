@@ -65,24 +65,107 @@
     }
     
     .btn-edit {
-        background-color: #4CAF50;
+        background: linear-gradient(135deg, #4CAF50 0%, #3d8b40 100%);
         color: white;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+        margin: 0 4px;
+    }
+    
+    .btn-edit:hover {
+        background: linear-gradient(135deg, #3d8b40 0%, #2e6e31 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .btn-edit:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-refresh {
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+        margin: 0 4px;
+    }
+    
+    .btn-refresh:hover {
+        background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .btn-refresh:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .btn-delete {
-        background-color: #f44336;
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
         color: white;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+        margin: 0 4px;
+    }
+    
+    .btn-delete:hover {
+        background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .btn-delete:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .btn-create {
-        background-color: #2196F3;
+        background: linear-gradient(135deg, #4a6cf7 0%, #3a56d5 100%);
         color: white;
-        padding: 10px 15px;
+        padding: 10px 20px;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         text-decoration: none;
         font-size: 1em;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .btn-create:hover {
+        background: linear-gradient(135deg, #3a56d5 0%, #2e45b3 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .btn-create:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     /* Modal styles */
@@ -171,12 +254,25 @@
             <input type="hidden" id="aliasId">
             
             <div class="form-group">
-                <label for="aliasPrefix">Alias Prefix</label>
-                <div style="display: flex; align-items: center;">
-                    <input type="text" id="aliasPrefix" required style="flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                    <span style="background: #f0f0f0; padding: 8px; border: 1px solid #ddd; border-left: none; border-radius: 0 4px 4px 0;">@rebox.sh</span>
+                <label for="title">Title</label>
+                <input type="text" id="title" required pattern="[a-zA-Z0-9]+" 
+                    title="Must be one word with only letters and numbers" 
+                    oninput="updateAliasPreview()">
+                <small>One word, letters and numbers only (e.g., shopping, work, personal)</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Alias Preview</label>
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <input type="text" id="aliasPreview" readonly 
+                        style="flex: 1; background: #f8f9fa; cursor: not-allowed;">
+                    <button type="button" onclick="loadAlias()" 
+                        style="margin-left: 10px; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Refresh
+                    </button>
                 </div>
-                <small>This will be randomly generated if left empty</small>
+                <small>This is your full alias</small>
+                <input type="hidden" id="randomAlias">
             </div>
             
             <div class="form-group">
@@ -246,15 +342,37 @@
         }
     }
     
+    async function loadAlias() {
+        try {
+            const response = await fetch('/api/aliases/generate');
+            const randomAlias = await response.text();
+            document.getElementById('randomAlias').value = randomAlias;
+            updateAliasPreview();
+        } catch (error) {
+            console.error('Error loading random alias:', error);
+            showNotification('Error generating random alias', 'error');
+        }
+    }
+    
+    // Update the alias preview as the user types
+    function updateAliasPreview() {
+        const title = document.getElementById('title').value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const randomAlias = document.getElementById('randomAlias').value || '';
+        const preview = title + '.' + randomAlias;
+        document.getElementById('aliasPreview').value = preview ? `${preview}@rebox.sh` : '';
+        document.getElementById('randomAlias').value = randomAlias;
+    }
+    
     // Show create alias modal
     function showCreateModal() {
         currentAlias = null;
         document.getElementById('modalTitle').textContent = 'Create New Alias';
         document.getElementById('aliasForm').reset();
         document.getElementById('aliasId').value = '';
-        document.getElementById('aliasPrefix').value = '';
-        document.getElementById('aliasPrefix').readOnly = false;
         document.querySelector('.modal').style.display = 'flex';
+        
+        // Load a random alias when opening the modal
+        loadAlias();
     }
     
     // Edit alias
@@ -262,19 +380,43 @@
         currentAlias = alias;
         document.getElementById('modalTitle').textContent = 'Edit Alias';
         document.getElementById('aliasId').value = alias.id;
-        document.getElementById('aliasPrefix').value = alias.alias_prefix;
-        document.getElementById('aliasPrefix').readOnly = true; // Don't allow editing the prefix
+        
+        // Set the title and random alias from the alias object
+        document.getElementById('title').value = alias.alias_title || '';
+        document.getElementById('randomAlias').value = alias.alias_random || '';
+        
+        // Set other fields
         document.getElementById('description').value = alias.description || '';
-        document.getElementById('forwardingEmail').value = alias.forwarding_email;
+        document.getElementById('forwardingEmail').value = alias.forwarding_email || '';
+        
+        // Update the preview and show the modal
+        updateAliasPreview();
         document.querySelector('.modal').style.display = 'flex';
     }
     
     // Save alias (create or update)
     async function saveAlias() {
         const aliasId = document.getElementById('aliasId').value;
-        const aliasPrefix = document.getElementById('aliasPrefix').value.trim();
+        const title = document.getElementById('title').value.trim();
+        const randomAlias = document.getElementById('randomAlias').value;
         const description = document.getElementById('description').value.trim();
         const forwardingEmail = document.getElementById('forwardingEmail').value.trim();
+        
+        // Validate form
+        if (!title) {
+            showNotification('Please enter a title for your alias', 'error');
+            return;
+        }
+        
+        if (!/^[a-zA-Z0-9]+$/.test(title)) {
+            showNotification('Title can only contain letters and numbers', 'error');
+            return;
+        }
+        
+        if (!forwardingEmail) {
+            showNotification('Please enter a forwarding email', 'error');
+            return;
+        }
         
         try {
             let response;
@@ -287,7 +429,9 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        description,
+                        alias_title: title,
+                        alias_random: randomAlias,
+                        description: description,
                         forwarding_email: forwardingEmail
                     })
                 });
@@ -299,8 +443,9 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        alias_prefix: aliasPrefix || undefined, // Let server generate if empty
-                        description,
+                        title: title,
+                        random_alias: randomAlias,
+                        description: description,
                         forwarding_email: forwardingEmail
                     })
                 });
