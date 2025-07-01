@@ -22,10 +22,10 @@
                 <a href="{{ url_for('main.aliases') }}" class="nav-link">Aliases</a>
             </nav>
         </div>
-        {% if session.get('username') %}
+        {% if current_user.is_authenticated %}
             <div class="user-info">
-                <span>Hey there, {{ session['username'] }}</span>
-                <a href="{{ url_for('user.logout') }}" class="logout-btn">Logout</a>
+                <span>Hey there, {{ current_user.username }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
             </div>
         {% endif %}
     </header>
