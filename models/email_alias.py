@@ -4,7 +4,7 @@ import random
 import string
 
 class EmailAlias(db.Model):
-    __tablename__ = 'email_aliases'
+    __tablename__ = 'email_alias'
     
     id = db.Column(db.Integer, primary_key=True)
     alias_title = db.Column(db.String(120), nullable=False)
@@ -26,7 +26,6 @@ class EmailAlias(db.Model):
     @classmethod
     def generate_alias(cls):
         """Generate a random dictionary word with 3-4 numbers"""
-        # TODO: Common dictionary words (you might want to load this from a file in production)
         words = [
             'apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew',
             'kiwi', 'lemon', 'mango', 'nectarine', 'orange', 'pear', 'quince', 'raspberry',
@@ -39,19 +38,6 @@ class EmailAlias(db.Model):
     
     def to_dict(self):
         """Convert the alias to a dictionary for JSON serialization"""
-        return {
-            'id': self.id,
-            'alias_title': self.alias_title,
-            'alias_random': self.alias_random,
-            'alias_domain': self.alias_domain,
-            'full_alias': self.full_alias,
-            'description': self.description,
-            'forwarding_email': self.forwarding_email,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'user_id': self.user_id
-        }
-    
-    def to_dict(self):
         return {
             'id': self.id,
             'alias_title': self.alias_title,

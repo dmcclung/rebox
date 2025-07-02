@@ -39,7 +39,7 @@ class EmailProcessor:
                     cur.execute(
                         """
                         SELECT ea.forwarding_email, u.username 
-                        FROM email_aliases ea
+                        FROM email_alias ea
                         JOIN "user" u ON ea.user_id = u.id
                         WHERE ea.alias_title = %s 
                         AND ea.alias_random = %s 
@@ -51,17 +51,46 @@ class EmailProcessor:
                     return result if result else (None, None)
         return (None, None)
 
+    def get_user_id_from_alias(self, alias):
+        """Get user_id from email alias (format: alias_title.alias_random@domain)"""
+        try:
+            # Extract alias parts (format: alias_title.alias_random@domain)
+            local_part = alias.split('@')[0]
+            if '.' in local_part:
+                alias_title, alias_random = local_part.split('.', 1)
+                with self.conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT user_id FROM email_alias
+                        WHERE alias_title = %s 
+                        AND alias_random = %s 
+                        AND alias_domain = %s
+                        """,
+                        (alias_title, alias_random, self.email_domain)
+                    )
+                    result = cur.fetchone()
+                    return result[0] if result else None
+            return None
+        except Exception as e:
+            print(f"Error looking up user from alias: {e}", file=sys.stderr)
+            return None
+
     def store_email(self, sender, recipient, subject, body, alias=None):
         """Store the email in the database"""
         try:
+            # Get user_id from the email alias
+            user_id = self.get_user_id_from_alias(recipient)
+            if user_id is None:
+                raise ValueError(f"No user found for email alias: {recipient}")
+                
             with self.conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO emails (sender, recipient, subject, body, alias_used)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO email (sender, recipient, subject, body, alias_used, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (sender, recipient, subject, body, alias)
+                    (sender, recipient, subject, body, alias, user_id)
                 )
                 self.conn.commit()
                 return cur.fetchone()[0]
