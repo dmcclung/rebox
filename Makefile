@@ -1,4 +1,4 @@
-.PHONY: build up down db logs shell migrate upgrade shell-db test clean restart rebuild
+.PHONY: build up down db logs shell migrate upgrade shell-db test clean restart rebuild mock-email
 
 # Restart web service
 restart:
@@ -47,6 +47,14 @@ shell-db:
 # Run tests
 test:
 	flask test
+
+# Send a test email to a random recipient or specified email
+mock-email:
+	python3 mock_email_sender.py $(filter-out $@,$(MAKECMDGOALS))
+
+# This allows the mock-email target to accept arguments
+%:
+	@:
 
 # Clean up
 clean:

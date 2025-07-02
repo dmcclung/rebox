@@ -99,12 +99,22 @@ class EmailProcessor:
             print(f"Error storing email: {e}", file=sys.stderr)
             raise
 
-    def forward_email(self, to_email, from_email, subject, body):
+    def forward_email(self, to_email, from_email, subject, body, original_msg=None):
         """Forward an email to the specified address"""
         msg = MIMEMultipart()
         msg['From'] = from_email
         msg['To'] = to_email
         msg['Subject'] = f"Fwd: {subject}"
+        
+        # Preserve the original Date header if it exists
+        if original_msg and 'Date' in original_msg:
+            msg['Date'] = original_msg['Date']
+        else:
+            msg['Date'] = email.utils.formatdate()
+        
+        # Add Message-ID header (required for email delivery)
+        domain = self.email_domain or 'rebox.sh'  # Fallback domain if not set
+        msg['Message-ID'] = email.utils.make_msgid(domain=domain)
         
         # Add the original email as an attachment or in the body
         msg.attach(MIMEText(body, 'plain'))
@@ -151,13 +161,15 @@ class EmailProcessor:
                 
                 # Forward the email
                 success = self.forward_email(
-                    to_email=forwarding_email,
-                    from_email=f"{recipient_local}@{self.email_domain}",
-                    subject=subject,
-                    body=body
+                    forwarding_email, 
+                    f"{username}@{self.email_domain}", 
+                    subject,
+                    body,
+                    msg  # Pass the original message to preserve headers
                 )
-                
-                if not success:
+                if success:
+                    print(f"Email forwarded to {forwarding_email}")
+                else:
                     print(f"Failed to forward email to {forwarding_email}", file=sys.stderr)
                 
                 return True
