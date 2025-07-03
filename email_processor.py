@@ -8,7 +8,12 @@ from dotenv import load_dotenv
 import os
 import email.utils
 
-load_dotenv()
+# Get the directory where the script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# Construct the path to the .env file in that directory
+dotenv_path = os.path.join(script_dir, '.env')
+# Load the .env file from the explicit path
+load_dotenv(dotenv_path=dotenv_path)
 db_url = os.getenv('DATABASE_URL')
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'localhost')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 1025))  # Default to local testing port
