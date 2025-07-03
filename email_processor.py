@@ -128,12 +128,12 @@ class EmailProcessor:
         try:
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 if self.smtp_username and self.smtp_password:
+                    server.starttls()
                     server.login(self.smtp_username, self.smtp_password)
                 server.send_message(msg)
             return True
         except Exception as e:
-            print(f"Error forwarding email: {e}", file=sys.stderr)
-            return False
+            raise e
 
     def process_email(self, raw_email, recipient_arg=None):
         """Process an incoming email"""
@@ -191,7 +191,7 @@ class EmailProcessor:
                 return True
                 
             except Exception as e:
-                print(f"Error processing email: {e}", file=sys.stderr)
+                print(f"Failed to forward email to {forwarding_email}. Reason: {e}", file=sys.stderr)
                 return False
         else:
             # Not an alias, just store it
