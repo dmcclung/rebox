@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 import os
+import email.utils
 
 load_dotenv()
 db_url = os.getenv('DATABASE_URL')
@@ -129,12 +130,22 @@ class EmailProcessor:
             print(f"Error forwarding email: {e}", file=sys.stderr)
             return False
 
-    def process_email(self, raw_email):
+    def process_email(self, raw_email, recipient_arg=None):
         """Process an incoming email"""
         msg = email.message_from_string(raw_email)
-        
-        sender = msg['from']
-        to = msg['to']
+
+        # Use recipient from Postfix argv if available, otherwise parse from header
+        if recipient_arg:
+            to = recipient_arg
+        else:
+            # Robustly parse the 'To' header to handle formats like "Name <email@addr.com>"
+            recipient_name, recipient_addr = email.utils.parseaddr(msg['to'])
+            to = recipient_addr or msg['to']
+
+        # Robustly parse the 'From' header as well
+        sender_name, sender_addr = email.utils.parseaddr(msg['from'])
+        sender = sender_addr or msg['from']
+
         subject = msg['subject']
         
         # Extract body (text/plain)
@@ -189,10 +200,13 @@ class EmailProcessor:
 def main():
     # Read email from stdin
     raw_email = sys.stdin.read()
+
+    # Get recipient from command-line argument if provided by Postfix (from master.cf)
+    recipient = sys.argv[1] if len(sys.argv) > 1 else None
     
     # Process the email
     processor = EmailProcessor()
-    processor.process_email(raw_email)
+    processor.process_email(raw_email, recipient_arg=recipient)
 
 if __name__ == '__main__':
     main()
