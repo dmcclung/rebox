@@ -81,7 +81,7 @@ class EmailProcessor:
             print(f"Error looking up user from alias: {e}", file=sys.stderr)
             return None
 
-    def store_email(self, sender, recipient, subject, body, alias=None):
+    def store_email(self, sender, sender_name, recipient, subject, body, alias=None):
         """Store the email in the database"""
         try:
             # Get user_id from the email alias
@@ -92,11 +92,11 @@ class EmailProcessor:
             with self.conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO email (sender, recipient, subject, body, alias_used, user_id)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO email (sender, sender_name, recipient, subject, body, alias_used, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (sender, recipient, subject, body, alias, user_id)
+                    (sender, sender_name, recipient, subject, body, alias, user_id)
                 )
                 self.conn.commit()
                 return cur.fetchone()[0]
@@ -173,7 +173,7 @@ class EmailProcessor:
             # This is an alias, forward the email
             try:
                 # Store the original email
-                email_id = self.store_email(sender, to, subject, body, recipient_local)
+                email_id = self.store_email(sender, sender_name, to, subject, body, recipient_local)
                 
                 # Forward the email
                 success = self.forward_email(
@@ -196,7 +196,7 @@ class EmailProcessor:
         else:
             # Not an alias, just store it
             try:
-                self.store_email(sender, to, subject, body)
+                self.store_email(sender, sender_name, to, subject, body)
                 return True
             except Exception as e:
                 print(f"Error storing email: {e}", file=sys.stderr)

@@ -3,6 +3,7 @@ from db import db
 class Email(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender = db.Column(db.String(255), nullable=False)
+    sender_name = db.Column(db.String(255), nullable=True)
     recipient = db.Column(db.String(255), nullable=False)
     subject = db.Column(db.String(255))
     body = db.Column(db.Text)
@@ -14,6 +15,7 @@ class Email(db.Model):
         return {
             'id': self.id,
             'sender': self.sender,
+            'sender_name': self.sender_name,
             'recipient': self.recipient,
             'subject': self.subject,
             'body': self.body,

@@ -56,6 +56,12 @@
         color: #555;
         font-size: 0.9em;
     }
+
+    .email-sender-address {
+        color: #777;
+        font-size: 0.85em;
+        margin-top: 2px;
+    }
     
     .email-body {
         color: #666;
@@ -110,7 +116,10 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
-                        <div class="email-sender">${email.sender}</div>
+                        ${email.sender_name
+                            ? `<div class="email-sender">${email.sender_name}</div><div class="email-sender-address">${email.sender}</div>`
+                            : `<div class="email-sender">${email.sender}</div>`
+                        }
                         <div class="email-recipient">to ${email.recipient}</div>
                     </td>
                     <td>
