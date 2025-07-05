@@ -81,22 +81,33 @@ class EmailProcessor:
             print(f"Error looking up user from alias: {e}", file=sys.stderr)
             return None
 
-    def store_email(self, sender, sender_name, recipient, subject, body, alias=None):
-        """Store the email in the database"""
+    def get_user_id_from_username(self, username):
+        """Get user_id from a username."""
         try:
-            # Get user_id from the email alias
-            user_id = self.get_user_id_from_alias(recipient)
-            if user_id is None:
-                raise ValueError(f"No user found for email alias: {recipient}")
-                
             with self.conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO email (sender, sender_name, recipient, subject, body, alias_used, user_id)
+                    SELECT id FROM "user" WHERE username = %s
+                    """,
+                    (username,)
+                )
+                result = cur.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            print(f"Error looking up user from username: {e}", file=sys.stderr)
+            return None
+
+    def store_email(self, user_id, sender, sender_name, recipient, subject, body, alias_used=None):
+        """Store the email in the database for a given user_id."""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO email (user_id, sender, sender_name, recipient, subject, body, alias_used)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (sender, sender_name, recipient, subject, body, alias, user_id)
+                    (user_id, sender, sender_name, recipient, subject, body, alias_used)
                 )
                 self.conn.commit()
                 return cur.fetchone()[0]
@@ -136,24 +147,39 @@ class EmailProcessor:
             raise e
 
     def process_email(self, raw_email, recipient_arg=None):
-        """Process an incoming email"""
+        """Process an incoming email by identifying the recipient and storing or forwarding it."""
         msg = email.message_from_string(raw_email)
 
-        # Use recipient from Postfix argv if available, otherwise parse from header
-        if recipient_arg:
-            to = recipient_arg
-        else:
-            # Robustly parse the 'To' header to handle formats like "Name <email@addr.com>"
-            recipient_name, recipient_addr = email.utils.parseaddr(msg['to'])
-            to = recipient_addr or msg['to']
+        # Determine recipient
+        to = recipient_arg or email.utils.parseaddr(msg['to'])[1] or msg['to']
+        if not to:
+            print("Could not determine recipient. Dropping email.", file=sys.stderr)
+            return False
 
-        # Robustly parse the 'From' header as well
+        recipient_local = to.split('@')[0].lower()
+        user_id = None
+        is_alias = False
+        owner_username = None
+
+        # Check if recipient is an alias
+        forwarding_email, owner_username = self.get_forwarding_email(recipient_local)
+
+        if owner_username:
+            is_alias = True
+            user_id = self.get_user_id_from_username(owner_username)
+        else:
+            # Not an alias, check if it's a primary user email
+            user_id = self.get_user_id_from_username(recipient_local)
+
+        if not user_id:
+            print(f"Recipient address {to} not found. Dropping email.", file=sys.stderr)
+            return False
+
+        # Now that we have a user, parse the rest of the email
         sender_name, sender_addr = email.utils.parseaddr(msg['from'])
         sender = sender_addr or msg['from']
-
         subject = msg['subject']
         
-        # Extract body (text/plain)
         body = ""
         if msg.is_multipart():
             for part in msg.walk():
@@ -162,45 +188,28 @@ class EmailProcessor:
                     break
         else:
             body = msg.get_payload(decode=True).decode(errors='replace')
-        
-        # Extract the local part from the recipient email
-        recipient_local = to.split('@')[0].lower()
-        
-        # Check if this is an alias
-        forwarding_email, username = self.get_forwarding_email(recipient_local)
-        
-        if forwarding_email:
-            # This is an alias, forward the email
+
+        # Store the email
+        try:
+            alias_to_store = recipient_local if is_alias else None
+            self.store_email(user_id, sender, sender_name, to, subject, body, alias_used=alias_to_store)
+        except Exception as e:
+            print(f"Failed to store email for {to}. Reason: {e}", file=sys.stderr)
+            return False
+
+        # If it was an alias with a forwarding address, forward it
+        if is_alias and forwarding_email:
             try:
-                # Store the original email
-                email_id = self.store_email(sender, sender_name, to, subject, body, recipient_local)
-                
-                # Forward the email
-                success = self.forward_email(
-                    forwarding_email, 
-                    f"{username}@{self.email_domain}", 
-                    subject,
-                    body,
-                    msg  # Pass the original message to preserve headers
+                self.forward_email(
+                    forwarding_email,
+                    f"{owner_username}@{self.email_domain}",
+                    subject, body, msg
                 )
-                if success:
-                    print(f"Email forwarded to {forwarding_email}")
-                else:
-                    print(f"Failed to forward email to {forwarding_email}", file=sys.stderr)
-                
-                return True
-                
+                print(f"Email forwarded to {forwarding_email}")
             except Exception as e:
                 print(f"Failed to forward email to {forwarding_email}. Reason: {e}", file=sys.stderr)
-                return False
-        else:
-            # Not an alias, just store it
-            try:
-                self.store_email(sender, sender_name, to, subject, body)
-                return True
-            except Exception as e:
-                print(f"Error storing email: {e}", file=sys.stderr)
-                return False
+
+        return True
 
 def main():
     # Read email from stdin
