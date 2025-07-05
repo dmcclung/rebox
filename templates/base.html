@@ -25,6 +25,7 @@
         {% if current_user.is_authenticated %}
             <div class="user-info">
                 <span>Hey there, {{ current_user.username }}</span>
+                <div class="primary-email">{{ primary_email }}</div>
                 <a href="{{ url_for('ui.logout') }}" class="logout-btn">Logout</a>
             </div>
         {% endif %}

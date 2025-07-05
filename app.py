@@ -1,5 +1,5 @@
 from flask import Flask, current_app
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 import os
 from datetime import timedelta
 from db import db
@@ -90,6 +90,15 @@ def create_app():
     # Register all routes
     from routes import register_routes
     register_routes(app)
+
+    @app.context_processor
+    def inject_primary_email():
+        """Inject the user's primary email into the template context."""
+        if current_user.is_authenticated:
+            email_domain = current_app.config.get('EMAIL_DOMAIN', 'rebox.sh')
+            primary_email = f"{current_user.username}@{email_domain}"
+            return dict(primary_email=primary_email)
+        return dict(primary_email=None)
 
     return app
 
