@@ -380,8 +380,9 @@
     }
     
     async function loadAlias() {
+        const title = document.getElementById('title').value.toLowerCase().replace(/[^a-z0-9]/g, '');
         try {
-            const response = await fetch('/api/aliases/generate');
+            const response = await fetch(`/api/aliases/generate?title=${encodeURIComponent(title)}`);
             const randomAlias = await response.text();
             document.getElementById('randomAlias').value = randomAlias;
             updateAliasPreview();

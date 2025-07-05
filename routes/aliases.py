@@ -2,6 +2,7 @@ import logging
 from flask import Blueprint, jsonify, request, current_app, session
 from flask_login import login_required, current_user
 from models.email_alias import EmailAlias
+from models.user import User
 from db import db
 
 logger = logging.getLogger(__name__)
@@ -33,13 +34,28 @@ def create_alias():
     # Get or generate random component
     random_alias = data.get('random_alias')
     if not random_alias:
-        random_alias = EmailAlias.generate_alias()
+        random_alias = EmailAlias.generate_alias(title=title)
+
+    # Final validation to prevent race conditions or conflicts
+    full_prefix = f"{title}.{random_alias}"
+    alias_domain = current_app.config.get('EMAIL_DOMAIN', 'rebox.sh')
+    
+    alias_exists = EmailAlias.query.filter_by(
+        alias_title=title, 
+        alias_random=random_alias,
+        alias_domain=alias_domain
+    ).first()
+    
+    user_exists = User.query.filter(User.username == full_prefix).first()
+
+    if alias_exists or user_exists:
+        return jsonify({'error': 'This alias is already taken. Please refresh to get a new one.'}), 409
     
     # Create the alias
     alias = EmailAlias(
         alias_title=title,
         alias_random=random_alias,
-        alias_domain=current_app.config.get('EMAIL_DOMAIN', 'rebox.sh'),
+        alias_domain=alias_domain,
         description=data.get('description', ''),
         forwarding_email=data.get('forwarding_email'),
         user_id=current_user.id
@@ -54,7 +70,8 @@ def create_alias():
 @login_required
 def generate_alias():
     """Generate a random alias to be combined with a title"""
-    return EmailAlias.generate_alias()
+    title = request.args.get('title', '')
+    return EmailAlias.generate_alias(title=title)
 
 @bp.route('/aliases/<int:alias_id>', methods=['DELETE'])
 @login_required

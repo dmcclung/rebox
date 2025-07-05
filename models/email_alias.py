@@ -24,7 +24,7 @@ class EmailAlias(db.Model):
         return f"{self.alias_title}.{self.alias_random}@{self.alias_domain}"
     
     @classmethod
-    def generate_alias(cls):
+    def _generate_random_part(cls):
         """Generate a random dictionary word with 3-4 numbers"""
         words = [
             'apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew',
@@ -35,6 +35,35 @@ class EmailAlias(db.Model):
         word = random.choice(words)
         numbers = ''.join(random.choices(string.digits, k=random.randint(3, 4)))
         return f"{word}{numbers}"
+
+    @classmethod
+    def generate_alias(cls, title=''):
+        """
+        Generate a random alias part, ensuring the combination with the title is unique
+        and doesn't conflict with an existing username.
+        """
+        from .user import User
+
+        # Loop to find a unique alias, with a failsafe
+        for _ in range(10):
+            random_part = cls._generate_random_part()
+            
+            if not title:
+                return random_part
+
+            full_prefix = f"{title}.{random_part}"
+            
+            # Check against existing aliases
+            alias_exists = cls.query.filter_by(alias_title=title, alias_random=random_part).first()
+            
+            # Check against existing usernames
+            user_exists = User.query.filter_by(username=full_prefix).first()
+            
+            if not alias_exists and not user_exists:
+                return random_part
+        
+        # Fallback after 10 tries, return a random part and let final validation catch it.
+        return cls._generate_random_part()
     
     def to_dict(self):
         """Convert the alias to a dictionary for JSON serialization"""
