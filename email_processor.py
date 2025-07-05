@@ -24,6 +24,10 @@ class EmailProcessor:
         self.smtp_password = os.environ.get('SMTP_PASSWORD')
         self.email_domain = os.environ.get('EMAIL_DOMAIN', 'rebox.sh')
 
+        # Define and create the directory for storing attachments
+        self.attachment_dir = os.path.join(script_dir, 'uploads', 'attachments')
+        os.makedirs(self.attachment_dir, exist_ok=True)
+
     def close(self):
         """Close the database connection."""
         if self.conn:
@@ -92,23 +96,61 @@ class EmailProcessor:
             print(f"Error looking up user from username: {e}", file=sys.stderr)
             return None
 
-    def store_email(self, user_id, sender, sender_name, recipient, subject, body, alias_used=None):
-        """Store the email in the database for a given user_id."""
+    def store_email(self, user_id, sender, sender_name, recipient, subject, body, body_html, raw_email, msg, alias_used=None):
+        """Store the email and its attachments in the database."""
+        email_id = None
         try:
             with self.conn.cursor() as cur:
+                # Insert email record
                 cur.execute(
                     """
-                    INSERT INTO email (user_id, sender, sender_name, recipient, subject, body, alias_used)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO email (user_id, sender, sender_name, recipient, subject, body, body_html, raw, alias_used)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (user_id, sender, sender_name, recipient, subject, body, alias_used)
+                    (user_id, sender, sender_name, recipient, subject, body, body_html, raw_email, alias_used)
                 )
+                email_id = cur.fetchone()[0]
+
+                # Process and store attachments
+                for part in msg.walk():
+                    if part.get_content_maintype() == 'multipart' or part.get('Content-Disposition') is None:
+                        continue
+
+                    filename = part.get_filename()
+                    if filename:
+                        # Sanitize filename to prevent directory traversal attacks
+                        filename = os.path.basename(filename)
+                        
+                        email_attachment_dir = os.path.join(self.attachment_dir, str(email_id))
+                        os.makedirs(email_attachment_dir, exist_ok=True)
+                        
+                        file_path = os.path.join(email_attachment_dir, filename)
+                        
+                        # Save the attachment
+                        with open(file_path, 'wb') as f:
+                            f.write(part.get_payload(decode=True))
+                        
+                        content_id = part.get('Content-ID')
+                        if content_id:
+                            content_id = content_id.strip('<>')
+
+                        # Store attachment metadata in the database
+                        cur.execute(
+                            """
+                            INSERT INTO attachment (email_id, filename, content_type, file_path, content_id)
+                            VALUES (%s, %s, %s, %s, %s)
+                            """,
+                            (email_id, filename, part.get_content_type(), file_path, content_id)
+                        )
+                
                 self.conn.commit()
-                return cur.fetchone()[0]
+                return email_id
+
         except Exception as e:
             self.conn.rollback()
-            print(f"Error storing email: {e}", file=sys.stderr)
+            print(f"Error storing email or attachments: {e}", file=sys.stderr)
+            # A more robust solution might clean up the files if email_id was created
             raise
 
     def forward_email(self, to_email, from_email, subject, body, original_msg=None):
@@ -183,19 +225,25 @@ class EmailProcessor:
         sender = sender_addr or msg['from']
         subject = msg['subject']
         
-        body = ""
+        body_plain = ""
+        body_html = ""
         if msg.is_multipart():
             for part in msg.walk():
-                if part.get_content_type() == 'text/plain':
-                    body = part.get_payload(decode=True).decode(errors='replace')
-                    break
+                content_type = part.get_content_type()
+                if content_type == 'text/plain' and not body_plain:
+                    body_plain = part.get_payload(decode=True).decode(errors='replace')
+                elif content_type == 'text/html' and not body_html:
+                    body_html = part.get_payload(decode=True).decode(errors='replace')
         else:
-            body = msg.get_payload(decode=True).decode(errors='replace')
+            if msg.get_content_type() == 'text/html':
+                body_html = msg.get_payload(decode=True).decode(errors='replace')
+            else:
+                body_plain = msg.get_payload(decode=True).decode(errors='replace')
 
         # Store the email
         try:
             alias_to_store = recipient_local if is_alias else None
-            self.store_email(user_id, sender, sender_name, to, subject, body, alias_used=alias_to_store)
+            self.store_email(user_id, sender, sender_name, to, subject, body_plain, body_html, raw_email, msg, alias_used=alias_to_store)
         except Exception as e:
             print(f"Failed to store email for {to}. Reason: {e}", file=sys.stderr)
             return EX_TEMPFAIL

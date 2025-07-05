@@ -4,7 +4,7 @@ import os
 from datetime import timedelta
 from db import db
 from migrate import migrate
-from models.user import User
+from models import User, Email, EmailAlias, Attachment
 
 from dotenv import load_dotenv
 load_dotenv()

@@ -9,3 +9,4 @@ Flask-SQLAlchemy
 Flask-Migrate
 flask-login
 Faker
+bleach

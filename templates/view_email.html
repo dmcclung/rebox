@@ -30,11 +30,38 @@
     }
     .email-body {
         line-height: 1.6;
+    }
+    .email-body.html-view {
+        white-space: normal;
+        font-family: sans-serif;
+    }
+    .email-body.raw-view {
         white-space: pre-wrap; /* Preserve whitespace and newlines */
         font-family: monospace;
         background-color: #f9f9f9;
         padding: 15px;
         border-radius: 5px;
+    }
+    .view-toggle {
+        margin-bottom: 15px;
+    }
+    .view-toggle .btn {
+        margin-right: 5px;
+    }
+    .attachments-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .attachments-section h4 {
+        margin-bottom: 10px;
+    }
+    .attachments-section ul {
+        list-style: none;
+        padding-left: 0;
+    }
+    .attachments-section li {
+        margin-bottom: 5px;
     }
 </style>
 {% endblock %}
@@ -49,8 +76,35 @@
             <div><strong>Date:</strong> {{ email.received_at.strftime('%a, %d %b %Y %H:%M:%S %z') }}</div>
         </div>
     </div>
-    <div class="email-body">
-        {{ email.body }}
+
+    <div class="view-toggle">
+        <a href="{{ url_for('ui.view_email', email_id=email.id, view='html') }}" class="btn btn-sm {{ 'btn-primary' if view_mode == 'html' else 'btn-secondary' }}">HTML</a>
+        <a href="{{ url_for('ui.view_email', email_id=email.id, view='raw') }}" class="btn btn-sm {{ 'btn-primary' if view_mode == 'raw' else 'btn-secondary' }}">Raw</a>
     </div>
+
+    <div class="email-body {{ 'html-view' if view_mode == 'html' else 'raw-view' }}">
+        {% if view_mode == 'raw' %}
+            {{ email.raw }}
+        {% elif sanitized_html %}
+            {{ sanitized_html|safe }}
+        {% else %}
+            {{ email.body }}
+        {% endif %}
+    </div>
+
+    {% if email.attachments %}
+    <div class="attachments-section">
+        <h4>Attachments</h4>
+        <ul>
+            {% for attachment in email.attachments %}
+            <li>
+                <a href="{{ url_for('ui.download_attachment', attachment_id=attachment.id) }}">
+                    {{ attachment.filename }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
