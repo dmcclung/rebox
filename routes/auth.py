@@ -1,6 +1,6 @@
 import logging
-from flask import Blueprint, jsonify, session, request, current_app, redirect, url_for, flash, render_template
-from flask_login import login_user, logout_user, current_user, login_required
+from flask import Blueprint, jsonify, session, request, current_app, url_for
+from flask_login import login_user, current_user, login_required
 import webauthn as webauthn
 
 logger = logging.getLogger(__name__)
@@ -17,12 +17,6 @@ from models.user import User
 from base64 import urlsafe_b64encode
 
 bp = Blueprint('auth', __name__, url_prefix='/api')
-
-@bp.route('/login', methods=['GET'])
-def login_page():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-    return render_template('login.html')
 
 @bp.route('/generate-authentication-options', methods=['POST'])
 def generate_authentication_options():
@@ -84,7 +78,7 @@ def verify_authentication():
         logger.debug(f"Login user called with remember_me: {remember_me}")
         
         # Get the next URL if it exists
-        next_url = request.args.get('next') or url_for('main.index')
+        next_url = request.args.get('next') or url_for('ui.index')
         
         # Clear the session
         session.pop('authentication_challenge', None)
@@ -95,13 +89,6 @@ def verify_authentication():
     except Exception as e:
         current_app.logger.error(f'Authentication verification failed: {str(e)}')
         return jsonify({"status": "error", "message": str(e)}), 400
-
-@bp.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('auth.login_page'))
 
 @bp.route('/generate-registration-options', methods=['POST'])
 def generate_registration_options():

@@ -1,7 +1,8 @@
 import logging
 from flask import Blueprint, jsonify, session
-from models import User
+from models import User, Email
 from flask_login import login_required, current_user
+from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
 
@@ -19,4 +20,5 @@ def emails():
         return jsonify({"error": "User not found"}), 404
         
     logger.debug(f"Found user in DB: {user.id}, emails: {len(user.emails) if user.emails else 0}")
-    return jsonify([email.to_dict() for email in user.emails])
+    sorted_emails = Email.query.filter_by(user_id=user.id).order_by(desc(Email.received_at)).all()
+    return jsonify([email.to_dict() for email in sorted_emails])

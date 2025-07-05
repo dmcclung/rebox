@@ -18,14 +18,14 @@
         <div class="header-content">
             <h1>Rebox Mail</h1>
             <nav class="main-nav">
-                <a href="{{ url_for('main.index') }}" class="nav-link">Inbox</a>
-                <a href="{{ url_for('main.aliases') }}" class="nav-link">Aliases</a>
+                <a href="{{ url_for('ui.index') }}" class="nav-link">Inbox</a>
+                <a href="{{ url_for('ui.aliases') }}" class="nav-link">Aliases</a>
             </nav>
         </div>
         {% if current_user.is_authenticated %}
             <div class="user-info">
                 <span>Hey there, {{ current_user.username }}</span>
-                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+                <a href="{{ url_for('ui.logout') }}" class="logout-btn">Logout</a>
             </div>
         {% endif %}
     </header>

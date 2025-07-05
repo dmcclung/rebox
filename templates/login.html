@@ -132,7 +132,7 @@
                 
                 showNotification('Login successful!', 'success');
                 setTimeout(() => {
-                    window.location.href = "{{ url_for('main.index') }}";
+                    window.location.href = "{{ url_for('ui.index') }}";
                 }, 1000);
             } catch (error) {
                 const errorMsg = error.message || 'An error occurred during login';
