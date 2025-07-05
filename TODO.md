@@ -17,7 +17,7 @@
 - [ ] Add API documentation
 
 ### Testing
-- [ ] Add unit tests for models
+- [ ] Add unit tests for models, pytest or flask test?
 - [ ] Add integration tests for routes
 - [ ] Set up CI/CD pipeline
 - [ ] Deploy from github on successful pipeline
