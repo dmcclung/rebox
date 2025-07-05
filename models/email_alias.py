@@ -11,7 +11,7 @@ class EmailAlias(db.Model):
     alias_random = db.Column(db.String(120), nullable=False)
     alias_domain = db.Column(db.String(120), nullable=False, default='rebox.sh')
     description = db.Column(db.String(500), nullable=True)
-    forwarding_email = db.Column(db.String(255), nullable=False)
+    forwarding_email = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     

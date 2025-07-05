@@ -41,7 +41,7 @@ def create_alias():
         alias_random=random_alias,
         alias_domain=current_app.config.get('EMAIL_DOMAIN', 'rebox.sh'),
         description=data.get('description', ''),
-        forwarding_email=data['forwarding_email'],
+        forwarding_email=data.get('forwarding_email'),
         user_id=current_user.id
     )
     
