@@ -17,5 +17,7 @@ pip install -r $WORK_TREE/requirements.txt
 chown www-data:www-data /app/email_processor.py
 chmod +x /app/email_processor.py
 
+flask db upgrade
+
 # Restart the Gunicorn service
 sudo systemctl restart rebox
