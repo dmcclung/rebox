@@ -14,9 +14,16 @@ python3 -m venv $WORK_TREE/venv
 source $WORK_TREE/venv/bin/activate
 pip install -r $WORK_TREE/requirements.txt
 
+# Set permissions on rebox transport
 chown www-data:www-data /app/email_processor.py
 chmod +x /app/email_processor.py
 
+# Set permissions on attachments dir
+mkdir -p /app/uploads
+chown -R www-data:www-data /app/uploads
+chmod -R 775 /app/uploads
+
+# Run any outstanding migrations
 flask --directory $WORK_TREE db upgrade
 
 # Restart the Gunicorn service

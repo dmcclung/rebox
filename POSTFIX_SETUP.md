@@ -70,7 +70,74 @@ To allow the `email_processor.py` script to forward emails via an external SMTP 
     -   **Destination:** Leave as default (`All IPv4` and `All IPv6`).
 5.  Save the rule.
 
-## 6. Final Verification
+## 6. Configure an SMTP Relay for Outbound Mail (Crucial for Cloud Hosts)
+
+### The Problem
+
+Most cloud providers, including DigitalOcean, block **outbound** connections on port 25 to prevent spam. This will cause your server to fail when it tries to send emails, such as bounce messages (Non-Delivery Reports) or notifications. You will see errors like `Connection timed out` in your Postfix logs when it tries to connect to other mail servers.
+
+### The Solution
+
+The solution is to configure Postfix to send all outbound mail through a dedicated SMTP relay service (like Mailtrap, SendGrid, or Mailgun). These services listen on alternative, unblocked ports (like 587, 465, or 2525) and handle the final delivery for you.
+
+**Important:** This change only affects **outbound** mail. Your server will continue to **receive** inbound mail from the internet on port 25 as normal.
+
+### Step-by-Step Configuration (using Mailtrap)
+
+1.  **Get Relay Credentials:**
+    Log in to your Mailtrap account and get your SMTP credentials (Host, Port, Username, and Password).
+
+2.  **Edit Postfix Configuration (`/etc/postfix/main.cf`):**
+    Add the following lines to the end of the file. Use port `587` or `2525` if `587` is also blocked.
+
+    ```bash
+    sudo nano /etc/postfix/main.cf
+    ```
+
+    ```ini
+    # SMTP Relay Configuration
+    relayhost = [smtp.mailtrap.io]:587
+
+    # Enable SASL authentication for the relay
+    smtp_sasl_auth_enable = yes
+    smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+    smtp_sasl_security_options = noanonymous
+
+    # Force TLS encryption for security
+    smtp_tls_security_level = encrypt
+    ```
+
+3.  **Create SASL Password File:**
+    Create a file to store your relay credentials.
+
+    ```bash
+    sudo nano /etc/postfix/sasl_passwd
+    ```
+
+    Add your credentials in this specific format:
+    `[smtp.mailtrap.io]:587 YOUR_USERNAME:YOUR_PASSWORD`
+
+4.  **Secure and Process the Password File:**
+    Set secure permissions and create the Postfix lookup table (`.db` file).
+
+    ```bash
+    # Set permissions so only root can read/write
+    sudo chmod 600 /etc/postfix/sasl_passwd
+
+    # Create the Postfix database file
+    sudo postmap /etc/postfix/sasl_passwd
+    ```
+
+5.  **Reload Postfix:**
+    Apply the new configuration.
+
+    ```bash
+    sudo systemctl reload postfix
+    ```
+
+Your server will now correctly route all outbound mail through the relay, bypassing the port blocks.
+
+## 7. Final Verification
 
 After applying all configurations, restart Postfix and check its status.
 
@@ -83,4 +150,3 @@ systemctl status postfix
 
 # Check the mail log for errors and successful deliveries
 tail -f /var/log/mail.log
-```
