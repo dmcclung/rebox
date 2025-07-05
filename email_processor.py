@@ -14,24 +14,19 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 dotenv_path = os.path.join(script_dir, '.env')
 # Load the .env file from the explicit path
 load_dotenv(dotenv_path=dotenv_path)
-db_url = os.getenv('DATABASE_URL')
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'localhost')
-SMTP_PORT = int(os.getenv('SMTP_PORT', 1025))  # Default to local testing port
-SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
-EMAIL_DOMAIN = os.getenv('EMAIL_DOMAIN', 'rebox.sh')
 
 class EmailProcessor:
     def __init__(self):
-        self.conn = psycopg2.connect(db_url)
-        self.smtp_server = SMTP_SERVER
-        self.smtp_port = SMTP_PORT
-        self.smtp_username = SMTP_USERNAME
-        self.smtp_password = SMTP_PASSWORD
-        self.email_domain = EMAIL_DOMAIN
+        self.conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
+        self.smtp_server = os.environ.get('SMTP_SERVER')
+        self.smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        self.smtp_username = os.environ.get('SMTP_USERNAME')
+        self.smtp_password = os.environ.get('SMTP_PASSWORD')
+        self.email_domain = os.environ.get('EMAIL_DOMAIN', 'rebox.sh')
 
-    def __del__(self):
-        if hasattr(self, 'conn') and self.conn:
+    def close(self):
+        """Close the database connection."""
+        if self.conn:
             self.conn.close()
 
     def get_forwarding_email(self, alias):
@@ -147,14 +142,22 @@ class EmailProcessor:
             raise e
 
     def process_email(self, raw_email, recipient_arg=None):
-        """Process an incoming email by identifying the recipient and storing or forwarding it."""
+        """
+        Process an incoming email by identifying the recipient, storing it, and forwarding if necessary.
+        Returns a Postfix-compatible exit code.
+        """
+        # Postfix exit codes
+        EX_OK = 0
+        EX_NOUSER = 67
+        EX_TEMPFAIL = 75
+
         msg = email.message_from_string(raw_email)
 
         # Determine recipient
         to = recipient_arg or email.utils.parseaddr(msg['to'])[1] or msg['to']
         if not to:
             print("Could not determine recipient. Dropping email.", file=sys.stderr)
-            return False
+            return EX_NOUSER
 
         recipient_local = to.split('@')[0].lower()
         user_id = None
@@ -173,7 +176,7 @@ class EmailProcessor:
 
         if not user_id:
             print(f"Recipient address {to} not found. Dropping email.", file=sys.stderr)
-            return False
+            return EX_NOUSER
 
         # Now that we have a user, parse the rest of the email
         sender_name, sender_addr = email.utils.parseaddr(msg['from'])
@@ -195,7 +198,7 @@ class EmailProcessor:
             self.store_email(user_id, sender, sender_name, to, subject, body, alias_used=alias_to_store)
         except Exception as e:
             print(f"Failed to store email for {to}. Reason: {e}", file=sys.stderr)
-            return False
+            return EX_TEMPFAIL
 
         # If it was an alias with a forwarding address, forward it
         if is_alias and forwarding_email:
@@ -207,20 +210,30 @@ class EmailProcessor:
                 )
                 print(f"Email forwarded to {forwarding_email}")
             except Exception as e:
+                # Log the error, but don't fail the delivery since it's already in the inbox
                 print(f"Failed to forward email to {forwarding_email}. Reason: {e}", file=sys.stderr)
 
-        return True
+        return EX_OK
 
 def main():
     # Read email from stdin
     raw_email = sys.stdin.read()
-
-    # Get recipient from command-line argument if provided by Postfix (from master.cf)
-    recipient = sys.argv[1] if len(sys.argv) > 1 else None
     
-    # Process the email
+    # Get recipient from command-line arguments
+    recipient = sys.argv[1] if len(sys.argv) > 1 else None
+
+    # Create an instance of the email processor and process the email
     processor = EmailProcessor()
-    processor.process_email(raw_email, recipient_arg=recipient)
+    try:
+        exit_code = processor.process_email(raw_email, recipient)
+    except Exception as e:
+        print(f"An unexpected error occurred in email processor: {e}", file=sys.stderr)
+        # 75 is a safe bet for temporary failure on unexpected errors
+        exit_code = 75
+    finally:
+        processor.close()
+    
+    sys.exit(exit_code)
 
 if __name__ == '__main__':
     main()
