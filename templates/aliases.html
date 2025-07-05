@@ -230,6 +230,27 @@
         background-color: #2196F3;
         color: white;
     }
+    
+    .alias-actions button:hover {
+        background-color: #c82333;
+    }
+    
+    .copy-btn {
+        margin-left: 10px;
+        padding: 2px 8px;
+        font-size: 0.8em;
+        color: white;
+        background-color: #007bff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        vertical-align: middle;
+    }
+
+    .copy-btn:hover {
+        background-color: #0056b3;
+    }
 </style>
 {% endblock %}
 
@@ -324,7 +345,10 @@
                 aliasElement.className = 'alias-item';
                 aliasElement.innerHTML = `
                     <div class="alias-info">
-                        <div class="alias-email">${alias.full_alias}</div>
+                        <p> 
+                            <span id="alias-email-${alias.id}">${alias.alias_title}.${alias.alias_random}@rebox.sh</span>
+                            <button class="copy-btn" data-alias="${alias.alias_title}.${alias.alias_random}@rebox.sh">Copy</button>
+                        </p>
                         <div class="alias-description">${alias.description || 'No description'}</div>
                         <div class="alias-forwarding">Forwards to: ${alias.forwarding_email}</div>
                     </div>
@@ -334,6 +358,20 @@
                     </div>
                 `;
                 aliasesList.appendChild(aliasElement);
+                
+                // Add copy button functionality
+                const copyButton = aliasElement.querySelector('.copy-btn');
+                copyButton.addEventListener('click', function() {
+                    const alias = this.getAttribute('data-alias');
+                    navigator.clipboard.writeText(alias).then(function() {
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(function() {
+                            copyButton.textContent = 'Copy';
+                        }, 2000);
+                    }, function(err) {
+                        console.error('Could not copy text: ', err);
+                    });
+                });
             });
         } catch (error) {
             console.error('Error loading aliases:', error);
