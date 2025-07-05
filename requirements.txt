@@ -10,3 +10,4 @@ Flask-Migrate
 flask-login
 Faker
 bleach
+pytest
