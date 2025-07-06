@@ -1,6 +1,7 @@
 # Rebox Project TODOs
 
 ### Email Functionality
+- [ ] Build a reply / send email function
 - [x] Update email processor to handle attachments?
 - [ ] Update email processor to handle inline images?
 - [x] Update email processor to handle HTML emails?
