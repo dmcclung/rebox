@@ -137,6 +137,49 @@ The solution is to configure Postfix to send all outbound mail through a dedicat
 
 Your server will now correctly route all outbound mail through the relay, bypassing the port blocks.
 
+#### A Note on Bounce Messages and Cloud Relays
+
+By default, Postfix sends bounce messages with a **null sender** (`MAIL FROM:<>`). This is a critical security feature of the email standard, designed to prevent infinite mail loops. However, **many commercial SMTP relays and cloud providers block null senders** for their own security and anti-spam policies. You may encounter an error like `550 5.7.1 Sending from domain is not allowed` when trying to send a bounce message to a relay.
+
+### General Tip: Rewriting Sender Addresses
+Postfix can rewrite sender addresses before they are sent to the relay. The two main tools for this are `sender_canonical_maps` and `smtp_generic_maps`.
+
+*   **`sender_canonical_maps`**: A general-purpose tool that rewrites addresses early in the mail processing chain. It's good for standardizing addresses system-wide.
+*   **`smtp_generic_maps`**: A more targeted tool applied by the SMTP client *just before* sending mail to a relay. This is the most reliable method for fixing addresses to meet a relay's specific requirements.
+
+#### Recommended Implementation
+
+For maximum reliability, using `smtp_generic_maps` with a regular expression table is the best approach.
+
+1.  **Configure `main.cf`:**
+    Edit `/etc/postfix/main.cf` to use a `regexp` map.
+
+    ```ini
+    # Rewrite sender addresses just before sending to the relay
+    smtp_generic_maps = regexp:/etc/postfix/generic_maps
+    ```
+
+2.  **Create the Map File (`/etc/postfix/generic_maps`):**
+    Create a file with the rewrite rules. The first column is a regular expression to match the sender.
+
+    ```
+    # /etc/postfix/generic_maps
+
+    # Match local system users
+    /^root$/         noreply@rebox.sh
+    /^www-data$/    noreply@rebox.sh
+
+    # Match the internal empty sender for bounce messages
+    /^$/            noreply@rebox.sh
+    ```
+
+3.  **Reload Postfix:**
+    Regexp maps do not use the `postmap` command. Just reload the service.
+
+    ```bash
+    sudo systemctl reload postfix
+    ```
+
 ## 7. Final Verification
 
 After applying all configurations, restart Postfix and check its status.
