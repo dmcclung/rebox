@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Send Email - Rebox Mail{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Send a New Email</h2>
+    <form id="sendForm" method="POST">
+        <div class="form-group">
+            <label for="recipient">Recipient</label>
+            <input type="email" class="form-control" id="recipient" name="recipient" required>
+        </div>
+        <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" class="form-control" id="subject" name="subject" required>
+        </div>
+        <div class="form-group">
+            <label for="body">Body</label>
+            <textarea class="form-control" id="body" name="body" rows="10" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('sendForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    try {
+        const response = await fetch('/api/send', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        const category = data.success ? 'success' : 'danger';
+        const message = data.message;
+        const notificationArea = document.querySelector('.notification-area');
+        const div = document.createElement('div');
+        div.className = `notification ${category}`;
+        div.innerHTML = `<span>${message}</span><button class="close" onclick="this.parentElement.remove()">&times;</button>`;
+        notificationArea.appendChild(div);
+        setTimeout(() => {
+            div.classList.add('fade-out');
+            setTimeout(() => div.remove(), 300);
+        }, 5000);
+        if (data.success) {
+            this.reset();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        const notificationArea = document.querySelector('.notification-area');
+        const div = document.createElement('div');
+        div.className = 'notification danger';
+        div.innerHTML = `<span>An error occurred while sending the email.</span><button class="close" onclick="this.parentElement.remove()">&times;</button>`;
+        notificationArea.appendChild(div);
+        setTimeout(() => {
+            div.classList.add('fade-out');
+            setTimeout(() => div.remove(), 300);
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

@@ -2,6 +2,7 @@ from .ui import bp as ui_bp
 from .emails import bp as emails_bp
 from .auth import bp as auth_bp
 from .aliases import bp as aliases_bp
+from .send_email import bp as send_email_bp
 
 def register_routes(app):
     """Register all route blueprints with the Flask app"""
@@ -9,3 +10,4 @@ def register_routes(app):
     app.register_blueprint(emails_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(aliases_bp)
+    app.register_blueprint(send_email_bp)

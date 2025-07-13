@@ -65,6 +65,10 @@ def create_app():
         RP_NAME=os.getenv("RP_NAME"),
         EXPECTED_ORIGIN=os.getenv("EXPECTED_ORIGIN"),
         EMAIL_DOMAIN=os.getenv("EMAIL_DOMAIN", "rebox.sh"),  # Default to rebox.sh if not set
+        SMTP_SERVER=os.getenv("SMTP_SERVER"),
+        SMTP_PORT=int(os.getenv("SMTP_PORT", 587)),
+        SMTP_USERNAME=os.getenv("SMTP_USERNAME"),
+        SMTP_PASSWORD=os.getenv("SMTP_PASSWORD"),
     )
 
     # Initialize extensions with app

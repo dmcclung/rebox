@@ -105,3 +105,8 @@ def download_attachment(attachment_id):
     except FileNotFoundError:
         flash('Attachment file not found.', 'danger')
         return redirect(url_for('ui.view_email', email_id=attachment.email_id))
+
+@bp.route('/send-email', methods=['GET'])
+@login_required
+def send_email_form():
+    return render_template('send_email.html')
